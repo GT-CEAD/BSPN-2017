@@ -126,16 +126,25 @@ rec_mun$nivel <- ws/4 + 1
 
 ```
 
+## Despesas por função (aqui!)
+
 ```{r funcao}
+library(extrafont)
+loadfonts()
+
 desp_fun <- read_excel("funcao_2017.xlsx")
 
+desp_fun$pctU2017 <- 100*desp_fun$UNIÃO_2017 / rowSums(desp_fun[,c(3,5,7)])
+desp_fun$pctU2016 <- 100*desp_fun$UNIÃO_2016 / rowSums(desp_fun[,c(4,6,8)])
+
+desp_fun <- desp_fun[,c(1,2,9,10,3:8)]
+
 d_fun <- desp_fun[c(1:28,31),] %>%
-  gather(-1:-2, key="Ente_Ano", value="valor") %>%
+  gather(-1:-4, key="Ente_Ano", value="valor") %>%
   separate(Ente_Ano, into = c("Ente", "Ano")) # por padrão ele separa por qq caractere não-alfanumérico, 
                                               # ou se usaria um {,sep = "_"}
 
-library(extrafont)
-loadfonts()
+tres_cores <-c("#F8AC08","#028063","#1E466A")
 
 plot_fun_dark <- ggplot(d_fun %>% filter(Ano=="2017" & !is.na(Funcao)), aes(fill=Ente, y=valor, x=Funcao)) +
     coord_flip() +
@@ -166,19 +175,23 @@ plot_fun_dark <- ggplot(d_fun %>% filter(Ano=="2017" & !is.na(Funcao)), aes(fill
 # fct_reorder muito útil! só que tenho q colocar em ordem descendente de PERCENTUAL, e não de valor. preciso
 # criar essa variável.
 
-plot_fun <- ggplot(d_fun %>% filter(Ano=="2017" & !is.na(Funcao)), aes(fill=Ente, y=valor, x=fct_reorder(Funcao,valor,"first"))) +
+plot_fun <- ggplot(
+      d_fun %>% filter(Ano=="2017" & !is.na(Funcao)), 
+      aes(
+        fill = factor(Ente, levels = rev(c("UNIÃO", "ESTADOS", "MUNICÍPIOS"))), 
+        y = valor, 
+        x = fct_reorder(Funcao,pctU2017,desc=TRUE))) +
     coord_flip() +
     geom_bar( stat="identity", position="fill", width=0.6, color = "white", size = 1) +
     labs(
       x = NULL,
       y = NULL,
       fill = "Ente",
-      title = "Distribuição das despesas por ente da Federação",
-      subtitle = "Conforme a classificação funcional"
+      title = paste("Distribuição das despesas por ente da Federação ","\u2013"," 2017"),
+      subtitle = "Conforme a Classificação Funcional. Por ordem descrescente da participação da União no total da despesa."
     ) +
-    #scale_x_discrete(labels=c() +
     scale_y_continuous(labels = scales::percent) +
-    #scale_fill_manual(values = c("#8D993D","#406AFF","#FFD500")) +
+    scale_fill_manual(values = tres_cores) +
     theme_minimal() +
     theme(
       text = element_text(family = "Source Sans Pro", colour = "grey20"),
@@ -194,5 +207,72 @@ plot_fun <- ggplot(d_fun %>% filter(Ano=="2017" & !is.na(Funcao)), aes(fill=Ente
 plot_fun
 
 ggplot()+theme(panel.background = element_rect(fill = "grey20"))
+```
+
+```{r serie-historica-funcao}
+
+fun_mun <- read_excel("consol_serie.xls", sheet="Funcao Municipios",skip=11,trim_ws=FALSE)
+fun_est <- read_excel("consol_serie.xls", sheet="Funcao Estados",skip=11,trim_ws=FALSE)
+fun_uni <- read_excel("consol_serie.xls", sheet="Funcao Uniao",skip=11,trim_ws=FALSE)
+
+mun <- fun_mun[which(fun_mun$`FUNÇÃO/SUBFUNÇÃO` %in% c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL")),]
+mun$ente <- "Municípios"
+
+est <- fun_est[which(fun_est$`FUNÇÃO/SUBFUNÇÃO` %in% c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL")),]
+est$ente <- "Estados"
+
+uni <- fun_uni[which(fun_uni$`FUNÇÃO/SUBFUNÇÃO` %in% c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL")),]
+uni$ente <- "União"
+
+serie_funcoes <- rbind(mun,est,uni)[,-2:-3]
+
+library(ipeaData)
+pibs <- ipeadata("BM12_PIBAC12")
+pibs <- pibs[MES=="12" & ANO %in% (2002:2012)]$VALVALOR
+
+for (i in 1:length(pibs)){
+  serie_funcoes[,i+1] <- round(serie_funcoes[,i+1] / (pibs[i] * 1000000),4)
+}
+
+serie_f <- serie_funcoes %>%
+  rename(Funcao = `FUNÇÃO/SUBFUNÇÃO`) %>%
+  gather(2:12, key="Ano", value="Valor")
+
+plot_funcoes <- function(funcao){
+  ggplot(
+      serie_f %>% filter(Funcao==funcao), 
+      aes(
+        fill = factor(ente, levels = rev(c("União", "Estados", "Municípios"))), 
+        y = Valor, 
+        x = Ano)) +
+    coord_flip() +
+    geom_bar(stat = "identity", width=0.7, color = "white", size = 1) + #position = "fill"
+    labs(
+      x = NULL,
+      y = NULL,
+      fill = "Ente",
+      title = paste("Distribuição das despesas com ", tolower(funcao), " por ente da Federação ","2002\u2013","2012", sep=""),
+      subtitle = "Em percentuais do PIB."
+    ) +
+    scale_y_continuous(labels = scales::percent) +
+    scale_fill_manual(values = tres_cores) +
+    geom_text(aes(label= scales::percent(Valor)),size = 3, position = position_stack(vjust = 0.5), hjust = 0.5, family = "Source Sans Pro", color = "white") +
+    theme_minimal() +
+    theme(
+      text = element_text(family = "Source Sans Pro", colour = "grey20"),
+      axis.text = element_text(family = "Source Sans Pro", colour = "grey20"),
+      title = element_text(face = "bold"),
+      plot.subtitle = element_text(face = "plain"),
+      panel.grid.major = element_blank(), 
+      panel.grid.minor = element_blank(),
+      legend.text = element_text(size = 8),
+      legend.title = element_text(size = 8),
+      legend.position = 'bottom')
+}
+
+plot_funcoes("EDUCAÇÃO")
+plot_funcoes("SAÚDE")
+plot_funcoes("ASSISTÊNCIA SOCIAL")
+
 ```
 
