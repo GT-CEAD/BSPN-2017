@@ -12,7 +12,6 @@ cores_nos <- c("#329c32","#dd3127")
 
 dados <- data.frame(origens, target, value, cores)
 
-
 p <- plot_ly(
     type = "sankey",
     orientation = "v",
@@ -49,3 +48,48 @@ p <- plot_ly(
         color = "#004a93"))
 
 p
+
+
+
+teste <- matriz[1:6,]
+lista_teste <- lista_nos[1:3]
+
+teste <- teste %>%
+  arrange(valor)
+
+sankey_teste <- plot_ly(
+  type = "sankey",
+  orientation = "h",
+  opacity = 0.6,
+  textfont = list(
+    family = "Source Sans Pro",
+    color = "#444444",
+    size = 12),
+  
+  node = list(
+    label = lista_teste,
+    color = "#004a93",
+    pad = 10,
+    thickness = 25,
+    line = list(
+      color = "",
+      width = 0)),
+  
+  hoverlabel = list(
+    font = list(
+      family = "Source Sans Pro")),
+  
+  link = list(
+    source = teste$src,
+    target = teste$trg,
+    value =  teste$valor,
+    color = teste$cores)) %>% 
+  
+  layout(
+    title = "",
+    font = list(
+      family = "Source Sans Pro",
+      size = 11,
+      color = "#004a93"))
+
+sankey_teste

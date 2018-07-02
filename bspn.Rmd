@@ -197,3 +197,73 @@ plot_funcoes("ASSISTÊNCIA SOCIAL")
 
 ```
 
+## Os ativos
+
+```{r}
+
+ativo <- read.csv2("links-ativo.csv")
+ativo$valor <- as.numeric(gsub("[.]", "", ativo$valor))
+
+lista_nos <- unique(c(levels(ativo$up), levels(ativo$down)))
+numeros_nos <- 0:(length(lista_nos)-1)
+nos <- data.frame(lista_nos, numeros_nos)
+
+matriz <- ativo %>%
+  left_join(nos, by = c("up" = "lista_nos")) %>%
+  rename(src = numeros_nos) %>%
+  left_join(nos, by = c("down" = "lista_nos")) %>%
+  rename(trg = numeros_nos)
+
+mtx_tres_cores <- col2rgb(tres_cores)
+
+cores <- NULL
+for (i in 1:dim(mtx_tres_cores)[2] ) {
+  cores <- c(cores, paste("rgba(", mtx_tres_cores[1,i],", ",  mtx_tres_cores[2,i],", ",  mtx_tres_cores[3,i],", 0.7)", sep = ""))
+}
+
+tbl_cores <- data.frame("ente" = levels(matriz$ente),cores)
+
+matriz <- matriz %>%
+  left_join(tbl_cores)
+
+library(plotly)
+
+sankey_ativo <- plot_ly(
+    type = "sankey",
+    orientation = "h",
+    opacity = 0.6,
+    textfont = list(
+      family = "Source Sans Pro",
+      color = "#444444",
+      size = 12),
+    
+    node = list(
+      label = nos$lista_nos,
+      color = "#004a93",
+      pad = 10,
+      thickness = 25,
+      line = list(
+        color = "",
+        width = 0)),
+    
+    hoverlabel = list(
+      font = list(
+        family = "Source Sans Pro")),
+    
+    link = list(
+      source = matriz$src,
+      target = matriz$trg,
+      value =  matriz$valor,
+      color = matriz$cores)) %>% 
+  
+    layout(
+      title = "",
+      font = list(
+        family = "Source Sans Pro",
+        size = 11,
+        color = "#004a93"))
+
+sankey_ativo
+
+```
+
