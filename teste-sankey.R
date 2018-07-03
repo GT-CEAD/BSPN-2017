@@ -49,13 +49,13 @@ p <- plot_ly(
 
 p
 
-
+#################
 
 teste <- matriz[1:6,]
 lista_teste <- lista_nos[1:3]
 
 teste <- teste %>%
-  arrange(valor)
+  arrange(ente)
 
 sankey_teste <- plot_ly(
   type = "sankey",
