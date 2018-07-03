@@ -14,6 +14,9 @@ library(gganimate)
 library(extrafont)
 loadfonts()
 
+tres_cores <-c("#F8AC08","#028063","#1E466A")
+tres_cores_pasteis <- c("#FECE60","#63BEAF", "#7A9CBD")
+
 desp_fun <- read_excel("funcao_2017.xlsx")
 
 desp_fun$pctU2017 <- 100*desp_fun$UNIÃO_2017 / rowSums(desp_fun[,c(3,5,7)])
@@ -25,9 +28,6 @@ d_fun <- desp_fun[c(1:28,31),] %>%
   gather(-1:-4, key="Ente_Ano", value="valor") %>%
   separate(Ente_Ano, into = c("Ente", "Ano")) # por padrão ele separa por qq caractere não-alfanumérico, 
                                               # ou se usaria um {,sep = "_"}
-
-tres_cores <-c("#F8AC08","#028063","#1E466A")
-tres_cores_pasteis <- c("#FECE60","#63BEAF", "#7A9CBD")
 
 plot_fun_dark <- ggplot(d_fun %>% filter(Ano=="2017" & !is.na(Funcao)), aes(fill=Ente, y=valor, x=Funcao)) +
     coord_flip() +
@@ -200,9 +200,20 @@ plot_funcoes("ASSISTÊNCIA SOCIAL")
 ## Os ativos
 
 ```{r}
+library(plotly)
 
 ativo <- read.csv2("links-ativo.csv")
 ativo$valor <- as.numeric(gsub("[.]", "", ativo$valor))
+
+# cores
+mtx_tres_cores <- col2rgb(tres_cores)
+
+cores <- NULL
+for (i in 1:dim(mtx_tres_cores)[2] ) {
+  cores <- c(cores, paste("rgba(", mtx_tres_cores[1,i],", ",  mtx_tres_cores[2,i],", ",  mtx_tres_cores[3,i],", 0.7)", sep = ""))
+}
+
+tbl_cores <- data.frame("ente" = levels(ativo$ente),cores)
 
 lista_nos <- unique(c(levels(ativo$up), levels(ativo$down)))
 numeros_nos <- 0:(length(lista_nos)-1)
@@ -214,21 +225,11 @@ matriz <- ativo %>%
   left_join(nos, by = c("down" = "lista_nos")) %>%
   rename(trg = numeros_nos)
 
-mtx_tres_cores <- col2rgb(tres_cores)
-
-cores <- NULL
-for (i in 1:dim(mtx_tres_cores)[2] ) {
-  cores <- c(cores, paste("rgba(", mtx_tres_cores[1,i],", ",  mtx_tres_cores[2,i],", ",  mtx_tres_cores[3,i],", 0.7)", sep = ""))
-}
-
-tbl_cores <- data.frame("ente" = levels(matriz$ente),cores)
-
 matriz <- matriz %>%
   left_join(tbl_cores)
 
-library(plotly)
-
-sankey_ativo <- plot_ly(
+plota_sankey <- function(dados, rotulos){
+  plot_ly(
     type = "sankey",
     orientation = "h",
     opacity = 0.6,
@@ -238,7 +239,7 @@ sankey_ativo <- plot_ly(
       size = 12),
     
     node = list(
-      label = nos$lista_nos,
+      label = rotulos,
       color = "#004a93",
       pad = 10,
       thickness = 25,
@@ -251,10 +252,10 @@ sankey_ativo <- plot_ly(
         family = "Source Sans Pro")),
     
     link = list(
-      source = matriz$src,
-      target = matriz$trg,
-      value =  matriz$valor,
-      color = matriz$cores)) %>% 
+      source = dados$src,
+      target = dados$trg,
+      value =  dados$valor,
+      color =  dados$cores)) %>% 
   
     layout(
       title = "",
@@ -262,8 +263,9 @@ sankey_ativo <- plot_ly(
         family = "Source Sans Pro",
         size = 11,
         color = "#004a93"))
+  }
 
-sankey_ativo
+plota_sankey(matriz, lista_nos)
 
 ```
 
