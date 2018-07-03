@@ -202,10 +202,13 @@ plot_funcoes("ASSISTÊNCIA SOCIAL")
 ```{r}
 library(plotly)
 
+# le os dados
+
 ativo <- read.csv2("links-ativo.csv")
 ativo$valor <- as.numeric(gsub("[.]", "", ativo$valor))
 
 # cores
+
 mtx_tres_cores <- col2rgb(tres_cores)
 
 cores <- NULL
@@ -215,18 +218,7 @@ for (i in 1:dim(mtx_tres_cores)[2] ) {
 
 tbl_cores <- data.frame("ente" = levels(ativo$ente),cores)
 
-lista_nos <- unique(c(levels(ativo$up), levels(ativo$down)))
-numeros_nos <- 0:(length(lista_nos)-1)
-nos <- data.frame(lista_nos, numeros_nos)
-
-matriz <- ativo %>%
-  left_join(nos, by = c("up" = "lista_nos")) %>%
-  rename(src = numeros_nos) %>%
-  left_join(nos, by = c("down" = "lista_nos")) %>%
-  rename(trg = numeros_nos)
-
-matriz <- matriz %>%
-  left_join(tbl_cores)
+# funcao de plotagem
 
 plota_sankey <- function(dados, rotulos){
   plot_ly(
@@ -263,7 +255,39 @@ plota_sankey <- function(dados, rotulos){
         family = "Source Sans Pro",
         size = 11,
         color = "#004a93"))
+}
+
+# funcao para processar os dados e chamar a função de plotagem
+
+gera_dados_ente <- function(ente_in){
+  
+  if (ente_in == "Consolidado") {
+    ativo_ente <- ativo}
+    else {ativo_ente <- ativo %>% filter(ente == ente_in)
   }
+  
+  lista_nos <- unique(c(levels(ativo_ente$up), levels(ativo_ente$down)))
+  numeros_nos <- 0:(length(lista_nos)-1)
+  print(lista_nos)
+  print(numeros_nos)
+  nos <- data.frame(lista_nos, numeros_nos)
+  
+  matriz <- ativo_ente %>%
+    left_join(nos, by = c("up" = "lista_nos")) %>%
+    rename(src = numeros_nos) %>%
+    left_join(nos, by = c("down" = "lista_nos")) %>%
+    rename(trg = numeros_nos)
+  
+  matriz <- matriz %>%
+    left_join(tbl_cores)
+  
+  return(matriz)
+}
+
+dados_consolidado <- gera_dados_ente("Consolidado")
+dados_Uniao <- gera_dados_ente("União")
+dados_Estados <- gera_dados_ente("Estados")
+dados_Municipios <- gera_dados_ente("Municípios")
 
 plota_sankey(matriz, lista_nos)
 
