@@ -259,7 +259,7 @@ plota_sankey <- function(dados, rotulos){
 
 # funcao para processar os dados e chamar a função de plotagem
 
-gera_dados_ente <- function(ente_in){
+plota_ente <- function(ente_in){
   
   if (ente_in == "Consolidado") {
     ativo_ente <- ativo}
@@ -268,8 +268,6 @@ gera_dados_ente <- function(ente_in){
   
   lista_nos <- unique(c(levels(ativo_ente$up), levels(ativo_ente$down)))
   numeros_nos <- 0:(length(lista_nos)-1)
-  print(lista_nos)
-  print(numeros_nos)
   nos <- data.frame(lista_nos, numeros_nos)
   
   matriz <- ativo_ente %>%
@@ -281,15 +279,25 @@ gera_dados_ente <- function(ente_in){
   matriz <- matriz %>%
     left_join(tbl_cores)
   
-  return(matriz)
+  plota_sankey(matriz, lista_nos)
+  #return(matriz)
 }
 
-dados_consolidado <- gera_dados_ente("Consolidado")
-dados_Uniao <- gera_dados_ente("União")
-dados_Estados <- gera_dados_ente("Estados")
-dados_Municipios <- gera_dados_ente("Municípios")
+#dados_consolidado <- gera_dados_ente("Consolidado")
+#dados_Uniao <- gera_dados_ente("União")
+#dados_Estados <- gera_dados_ente("Estados")
+#dados_Municipios <- gera_dados_ente("Municípios")
 
-plota_sankey(matriz, lista_nos)
+plota_ente("Consolidado")
+plota_ente("União")
+plota_ente("Estados")
+plota_ente("Municípios")
 
+
+```
+## Diagrama Consolidado
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+plota_ente("Consolidado")
 ```
 
