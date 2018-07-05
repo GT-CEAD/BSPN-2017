@@ -1,0 +1,46 @@
+up;down;ente;valor
+Passivo;Passivo Circulante;União;1.124.365
+Passivo;Passivo Não Circulante;União;6.129.940
+Passivo;Passivo Circulante;Estados;183.327
+Passivo;Passivo Não Circulante;Estados;1.579.433
+Passivo;Passivo Circulante;Municípios;58.992
+Passivo;Passivo Não Circulante;Municípios;479.664
+Passivo Circulante;Obrigações Trabalhistas, Previdenciárias e  Assistenciais a Pagar a Curto Prazo;União;39.162
+Passivo Circulante;Empréstimos e Financiamentos a Curto Prazo;União;789.358
+Passivo Circulante;Fornecedores e Contas a Pagar a Curto Prazo;União;2.814
+Passivo Circulante;Obrigações Fiscais a Curto Prazo;União;189
+Passivo Circulante;Provisões a Curto Prazo;União;52.017
+Passivo Circulante;Demais Obrigações a Curto Prazo;União;240.824
+Passivo Circulante;Obrigações Trabalhistas, Previdenciárias e  Assistenciais a Pagar a Curto Prazo;Estados;35.050
+Passivo Circulante;Empréstimos e Financiamentos a Curto Prazo;Estados;11.188
+Passivo Circulante;Fornecedores e Contas a Pagar a Curto Prazo;Estados;34.945
+Passivo Circulante;Obrigações Fiscais a Curto Prazo;Estados;406
+Passivo Circulante;Provisões a Curto Prazo;Estados;3.316
+Passivo Circulante;Demais Obrigações a Curto Prazo;Estados;98.422
+Passivo Circulante;Obrigações Trabalhistas, Previdenciárias e  Assistenciais a Pagar a Curto Prazo;Municípios;13.484
+Passivo Circulante;Empréstimos e Financiamentos a Curto Prazo;Municípios;1.913
+Passivo Circulante;Fornecedores e Contas a Pagar a Curto Prazo;Municípios;23.548
+Passivo Circulante;Obrigações Fiscais a Curto Prazo;Municípios;309
+Passivo Circulante;Provisões a Curto Prazo;Municípios;1.288
+Passivo Circulante;Demais Obrigações a Curto Prazo;Municípios;18.450
+Passivo Não Circulante;Obrigações Trabalhistas, Previdenciárias e  Assistenciais a Pagar a Longo Prazo;União;1.374
+Passivo Não Circulante;Empréstimos e Financiamentos a Longo Prazo;União;4.456.135
+Passivo Não Circulante;Fornecedores e Contas a Pagar a Longo Prazo;União;348
+Passivo Não Circulante;Obrigações Fiscais a Longo Prazo;União;81
+Passivo Não Circulante;Provisões a Longo Prazo;União;1.637.725
+Passivo Não Circulante;Demais Obrigações a Longo Prazo;União;34.274
+Passivo Não Circulante;Resultado Diferido;União;2
+Passivo Não Circulante;Obrigações Trabalhistas, Previdenciárias e  Assistenciais a Pagar a Longo Prazo;Estados;25.400
+Passivo Não Circulante;Empréstimos e Financiamentos a Longo Prazo;Estados;286.825
+Passivo Não Circulante;Fornecedores e Contas a Pagar a Longo Prazo;Estados;32.508
+Passivo Não Circulante;Obrigações Fiscais a Longo Prazo;Estados;135
+Passivo Não Circulante;Provisões a Longo Prazo;Estados;1.188.903
+Passivo Não Circulante;Demais Obrigações a Longo Prazo;Estados;34.847
+Passivo Não Circulante;Resultado Diferido;Estados;10.815
+Passivo Não Circulante;Obrigações Trabalhistas, Previdenciárias e  Assistenciais a Pagar a Longo Prazo;Municípios;36.545
+Passivo Não Circulante;Empréstimos e Financiamentos a Longo Prazo;Municípios;30.957
+Passivo Não Circulante;Fornecedores e Contas a Pagar a Longo Prazo;Municípios;15.564
+Passivo Não Circulante;Obrigações Fiscais a Longo Prazo;Municípios;2.122
+Passivo Não Circulante;Provisões a Longo Prazo;Municípios;376.785
+Passivo Não Circulante;Demais Obrigações a Longo Prazo;Municípios;15.663
+Passivo Não Circulante;Resultado Diferido;Municípios;2.029

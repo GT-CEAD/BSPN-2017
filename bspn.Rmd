@@ -11,16 +11,30 @@ library(gganimate)
 ## Despesas por função (aqui!)
 
 ```{r funcao}
-library(extrafont)
-loadfonts()
+#library(extrafont)
+#loadfonts()
 
 tres_cores <-c("#F8AC08","#028063","#1E466A")
 tres_cores_pasteis <- c("#FECE60","#63BEAF", "#7A9CBD")
 
+tema_BSPN <- function(){
+    theme_minimal() +
+    theme(
+      text = element_text(family = "Source Sans Pro", colour = "grey20"),
+      axis.text = element_text(family = "Source Sans Pro", colour = "grey20"),
+      title = element_text(face = "bold"),
+      plot.subtitle = element_text(face = "plain"),
+      panel.grid.major = element_blank(), 
+      panel.grid.minor = element_blank(),
+      legend.text = element_text(size = 8),
+      legend.title = element_text(size = 8),
+      legend.position = 'bottom')
+}
+
 desp_fun <- read_excel("funcao_2017.xlsx")
 
-desp_fun$pctU2017 <- 100*desp_fun$UNIÃO_2017 / rowSums(desp_fun[,c(3,5,7)])
-desp_fun$pctU2016 <- 100*desp_fun$UNIÃO_2016 / rowSums(desp_fun[,c(4,6,8)])
+desp_fun$pctU2017 <- 100*desp_fun$`UNIÃO_2017` / rowSums(desp_fun[,c(3,5,7)])
+desp_fun$pctU2016 <- 100*desp_fun$`UNIÃO_2016` / rowSums(desp_fun[,c(4,6,8)])
 
 desp_fun <- desp_fun[,c(1,2,9,10,3:8)]
 
@@ -28,6 +42,33 @@ d_fun <- desp_fun[c(1:28,31),] %>%
   gather(-1:-4, key="Ente_Ano", value="valor") %>%
   separate(Ente_Ano, into = c("Ente", "Ano")) # por padrão ele separa por qq caractere não-alfanumérico, 
                                               # ou se usaria um {,sep = "_"}
+
+# uma tabelinha com totais e uma versão do dataframe com esses totais para ordenar o gráfico de vlrs absolutos
+
+tot_fun_2017 <- d_fun %>%
+  group_by(Funcao, Ano) %>%
+  summarise(soma_funcao = sum(valor))
+
+d_fun_tot <- d_fun %>%
+  left_join(tot_fun_2017)
+
+# uma outra tabelinha para comparar previdencia e encargos especiais com as demais funcoes
+
+d_fun_demais <- d_fun %>%
+  filter(Ano=="2017" & !is.na(Funcao) & !(Funcao %in% c("28 - Encargos Especiais", "09 - Previdência Social"))) %>%
+  group_by(Ente,Ano) %>%
+  summarise(valor = sum(valor)) %>%
+  mutate(Funcao = "Demais funções")
+
+d_fun_prevEnc <- d_fun %>% 
+  filter(Ano=="2017" & !is.na(Funcao) & (Funcao %in% c("28 - Encargos Especiais", "09 - Previdência Social"))) %>%
+  select(Ente, Ano, valor, Funcao)
+
+d_fun_principais <- d_fun_prevEnc %>%
+  bind_rows(d_fun_demais) %>%
+  mutate (Funcao = factor(Funcao))
+
+# os gráficos
 
 plot_fun_dark <- ggplot(d_fun %>% filter(Ano=="2017" & !is.na(Funcao)), aes(fill=Ente, y=valor, x=Funcao)) +
     coord_flip() +
@@ -39,7 +80,6 @@ plot_fun_dark <- ggplot(d_fun %>% filter(Ano=="2017" & !is.na(Funcao)), aes(fill
       title = "Distribuição das despesas por ente da Federação",
       subtitle = "Conforme a classificação funcional"
     ) +
-    #scale_x_discrete(labels=c() +
     scale_y_continuous(labels = scales::percent) +
     scale_fill_manual(values = c("#8D993D","#406AFF","#FFD500")) +
     theme_minimal() +
@@ -75,50 +115,59 @@ plot_fun <- ggplot(
     ) +
     scale_y_continuous(labels = scales::percent) +
     scale_fill_manual(values = tres_cores) +
-    theme_minimal() +
-    theme(
-      text = element_text(family = "Source Sans Pro", colour = "grey20"),
-      axis.text = element_text(family = "Source Sans Pro", colour = "grey20"),
-      title = element_text(face = "bold"),
-      plot.subtitle = element_text(face = "plain"),
-      panel.grid.major = element_blank(), 
-      panel.grid.minor = element_blank(),
-      legend.text = element_text(size = 8),
-      legend.title = element_text(size = 8),
-      legend.position = 'bottom')
+    tema_BSPN()
 
-## arrumar a ordem!
+#reais <- scales::dollar_format(prefix = "R$ ", suffix = " bilhões", largest_with_cents = 1000, big.mark=".", decimal.mark=",")
+#reais(10000)
+
 plot_fun_abs <- ggplot(
-      d_fun %>% filter(Ano=="2017" & !is.na(Funcao) & !(Funcao %in% c("28 - Encargos Especiais", "09 - Previdência Social"))), 
+      d_fun_tot %>% filter(Ano=="2017" & !is.na(Funcao) & !(Funcao %in% c("28 - Encargos Especiais", "09 - Previdência Social"))), 
       aes(
         fill = factor(Ente, levels = rev(c("UNIÃO", "ESTADOS", "MUNICÍPIOS"))), 
-        y = valor, 
-        x = fct_reorder(Funcao,valor,desc=TRUE))) +
+        y = valor/1000, 
+        x = fct_reorder(Funcao,soma_funcao,desc=TRUE))) +
     coord_flip() +
     geom_bar( stat="identity", width=0.6, color = "white", size = 1) +
     labs(
       x = NULL,
       y = NULL,
       fill = "Ente",
-      title = paste("Despesas por ente da Federação ","\u2013"," 2017"),
-      subtitle = "Exceto 28 - Encargos Especiais e 09 - Previdência Social. Por ordem decrescente das despesas União."
+      title = paste("Despesas totais por Função ","\u2013"," 2017"),
+      subtitle = "Em bilhões de reais. Exceto funções \"28 - Encargos Especiais\" e \"09 - Previdência Social\"."
     ) +
-    scale_y_continuous(labels = scales::percent) +
+    #scale_y_discrete(breaks = c(0,100,200,300), labels = c("0","100","200","300")) +
+    #scale_y_continuous(limits = c(0,max(subset(d_fun_tot, d_fun_tot$Ano == "2017")$soma_funcao)/1000)) +
+    scale_y_continuous() + #uexpand = c(0,0) para zerar o padding entre o exito e o início do gráfico 
     scale_fill_manual(values = tres_cores) +
-    theme_minimal() +
-    theme(
-      text = element_text(family = "Source Sans Pro", colour = "grey20"),
-      axis.text = element_text(family = "Source Sans Pro", colour = "grey20"),
-      title = element_text(face = "bold"),
-      plot.subtitle = element_text(face = "plain"),
-      panel.grid.major = element_blank(), 
-      panel.grid.minor = element_blank(),
-      legend.text = element_text(size = 8),
-      legend.title = element_text(size = 8),
-      legend.position = 'bottom')
+    tema_BSPN()
+
+formata_BR <- scales::format_format(big.mark = ".", decimal.mark = ",", scientific = FALSE)
+
+plot_fun_abs_principais <- ggplot(
+      d_fun_principais, 
+      aes(
+        fill = factor(Ente, levels = rev(c("UNIÃO", "ESTADOS", "MUNICÍPIOS"))), 
+        y = valor/1000, 
+        x = fct_rev(Funcao))) +
+    coord_flip() +
+    geom_bar( stat="identity", width=0.6, color = "white", size = 1) +
+    labs(
+      x = NULL,
+      y = NULL,
+      fill = "Ente",
+      title = paste("Despesas totais por Função ","\u2013"," 2017"),
+      subtitle = "Em bilhões de reais."
+    ) +
+    #scale_y_discrete(breaks = c(0,100,200,300), labels = c("0","100","200","300")) +
+    #scale_y_continuous(limits = c(0,max(subset(d_fun_tot, d_fun_tot$Ano == "2017")$soma_funcao)/1000)) +
+    scale_y_continuous(labels = formata_BR) + #uexpand = c(0,0) para zerar o padding entre o exito e o início do gráfico 
+    scale_fill_manual(values = tres_cores) +
+    tema_BSPN()
 
 plot_fun
+plot_fun_abs_principais
 plot_fun_abs
+
 
 
 
@@ -130,13 +179,15 @@ fun_mun <- read_excel("consol_serie.xls", sheet="Funcao Municipios",skip=11,trim
 fun_est <- read_excel("consol_serie.xls", sheet="Funcao Estados",skip=11,trim_ws=FALSE)
 fun_uni <- read_excel("consol_serie.xls", sheet="Funcao Uniao",skip=11,trim_ws=FALSE)
 
-mun <- fun_mun[which(fun_mun$`FUNÇÃO/SUBFUNÇÃO` %in% c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL")),]
+funcoes_de_interesse <- c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL", "SEGURANÇA PÚBLICA")
+
+mun <- fun_mun[which(fun_mun$`FUNÇÃO/SUBFUNÇÃO` %in% funcoes_de_interesse),]
 mun$ente <- "Municípios"
 
-est <- fun_est[which(fun_est$`FUNÇÃO/SUBFUNÇÃO` %in% c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL")),]
+est <- fun_est[which(fun_est$`FUNÇÃO/SUBFUNÇÃO` %in% funcoes_de_interesse),]
 est$ente <- "Estados"
 
-uni <- fun_uni[which(fun_uni$`FUNÇÃO/SUBFUNÇÃO` %in% c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL")),]
+uni <- fun_uni[which(fun_uni$`FUNÇÃO/SUBFUNÇÃO` %in% funcoes_de_interesse),]
 uni$ente <- "União"
 
 serie_funcoes <- rbind(mun,est,uni)[,-2:-3]
@@ -173,22 +224,13 @@ plot_funcoes <- function(funcao){
     scale_y_continuous(labels = scales::percent) +
     scale_fill_manual(values = tres_cores) +
     geom_text(aes(label= scales::percent(Valor)),size = 3, position = position_stack(vjust = 0.5), hjust = 0.5, family = "Source Sans Pro", color = "white") +
-    theme_minimal() +
-    theme(
-      text = element_text(family = "Source Sans Pro", colour = "grey20"),
-      axis.text = element_text(family = "Source Sans Pro", colour = "grey20"),
-      title = element_text(face = "bold"),
-      plot.subtitle = element_text(face = "plain"),
-      panel.grid.major = element_blank(), 
-      panel.grid.minor = element_blank(),
-      legend.text = element_text(size = 8),
-      legend.title = element_text(size = 8),
-      legend.position = 'bottom')
+    tema_BSPN()
 }
 
 plot_funcoes("EDUCAÇÃO")
 plot_funcoes("SAÚDE")
 plot_funcoes("ASSISTÊNCIA SOCIAL")
+plot_funcoes("SEGURANÇA PÚBLICA")
 
 #ggplot(serie_f %>% filter(Funcao=="EDUCAÇÃO"), aes(x = Ano, y = Valor)) +
   #geom_point(aes(color=ente))+
@@ -207,9 +249,12 @@ library(plotly)
 ativo <- read.csv2("links-ativo.csv")
 ativo$valor <- as.numeric(gsub("[.]", "", ativo$valor))
 
+passivo <- read.csv2("links-passivo.csv")
+passivo$valor <- as.numeric(gsub("[.]", "", passivo$valor))
+
 # cores
 
-mtx_tres_cores <- col2rgb(tres_cores)
+mtx_tres_cores <- col2rgb(tres_cores_pasteis)
 
 cores <- NULL
 for (i in 1:dim(mtx_tres_cores)[2] ) {
@@ -225,6 +270,8 @@ plota_sankey <- function(dados, rotulos){
     type = "sankey",
     orientation = "h",
     opacity = 0.6,
+    width = 800,
+    height = 600,
     textfont = list(
       family = "Source Sans Pro",
       color = "#444444",
@@ -232,7 +279,7 @@ plota_sankey <- function(dados, rotulos){
     
     node = list(
       label = rotulos,
-      color = "#004a93",
+      color = "#004a93", ##004a93
       pad = 10,
       thickness = 25,
       line = list(
@@ -259,18 +306,18 @@ plota_sankey <- function(dados, rotulos){
 
 # funcao para processar os dados e chamar a função de plotagem
 
-plota_ente <- function(ente_in){
+plota_ente <- function(ente_in, dados){
   
   if (ente_in == "Consolidado") {
-    ativo_ente <- ativo}
-    else {ativo_ente <- ativo %>% filter(ente == ente_in)
+    dados_ente <- dados}
+    else {dado_ente <- dados %>% filter(ente == ente_in)
   }
   
-  lista_nos <- unique(c(levels(ativo_ente$up), levels(ativo_ente$down)))
+  lista_nos <- unique(c(levels(dados_ente$up), levels(dados_ente$down)))
   numeros_nos <- 0:(length(lista_nos)-1)
   nos <- data.frame(lista_nos, numeros_nos)
   
-  matriz <- ativo_ente %>%
+  matriz <- dados_ente %>%
     left_join(nos, by = c("up" = "lista_nos")) %>%
     rename(src = numeros_nos) %>%
     left_join(nos, by = c("down" = "lista_nos")) %>%
@@ -288,7 +335,9 @@ plota_ente <- function(ente_in){
 #dados_Estados <- gera_dados_ente("Estados")
 #dados_Municipios <- gera_dados_ente("Municípios")
 
-plota_ente("Consolidado")
+plota_ente("Consolidado", ativo)
+plota_ente("Consolidado", passivo)
+
 plota_ente("União")
 plota_ente("Estados")
 plota_ente("Municípios")
