@@ -33,6 +33,8 @@ tema_BSPN <- function(){
 
 desp_fun <- read_excel("funcao_2017.xlsx")
 
+tabela_nomes_funcoes <- desp_fun[1:28,1:2]
+
 desp_fun$pctU2017 <- 100*desp_fun$`UNIÃO_2017` / rowSums(desp_fun[,c(3,5,7)])
 desp_fun$pctU2016 <- 100*desp_fun$`UNIÃO_2016` / rowSums(desp_fun[,c(4,6,8)])
 
@@ -178,35 +180,92 @@ plot_fun_abs
 fun_mun <- read_excel("consol_serie.xls", sheet="Funcao Municipios",skip=11,trim_ws=FALSE)
 fun_est <- read_excel("consol_serie.xls", sheet="Funcao Estados",skip=11,trim_ws=FALSE)
 fun_uni <- read_excel("consol_serie.xls", sheet="Funcao Uniao",skip=11,trim_ws=FALSE)
+fun_con <- read_excel("consol_serie.xls", sheet="Funcao Consolidado",skip=11,trim_ws=FALSE)
 
-funcoes_de_interesse <- c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL", "SEGURANÇA PÚBLICA")
+fun_mun2 <- read_excel("complemento_serie_funcoes_2013_2017.xlsx", sheet="Função Municípios", trim_ws=FALSE)
+fun_est2 <- read_excel("complemento_serie_funcoes_2013_2017.xlsx", sheet="Função Estados", trim_ws=FALSE)
+fun_uni2 <- read_excel("complemento_serie_funcoes_2013_2017.xlsx", sheet="Função União", trim_ws=FALSE)
+fun_con2 <- read_excel("complemento_serie_funcoes_2013_2017.xlsx", sheet="Função Consolidado", trim_ws=FALSE)
 
-mun <- fun_mun[which(fun_mun$`FUNÇÃO/SUBFUNÇÃO` %in% funcoes_de_interesse),]
-mun$ente <- "Municípios"
+tabela_nomes_funcoes$Funcao_Maius <- toupper(tabela_nomes_funcoes$Nome_funcao)
 
-est <- fun_est[which(fun_est$`FUNÇÃO/SUBFUNÇÃO` %in% funcoes_de_interesse),]
-est$ente <- "Estados"
+# o teste...
+# 
+# sh_fun_con <- fun_con %>%
+#   inner_join(tabela_nomes_funcoes, by = c("FUNÇÃO/SUBFUNÇÃO" = "Funcao_Maius")) %>%
+#   rename(Funcao_Maius = `FUNÇÃO/SUBFUNÇÃO`) %>%
+#   mutate_at(2:14, funs(./1000000)) %>% #wow!
+#   select(15,16,1,2:14) %>%
+#   left_join(fun_con2, by = c("Funcao" = "X__1"))
 
-uni <- fun_uni[which(fun_uni$`FUNÇÃO/SUBFUNÇÃO` %in% funcoes_de_interesse),]
-uni$ente <- "União"
+# uma função para processar esses arquivos e juntá-los. olha que coisa linda.
 
-serie_funcoes <- rbind(mun,est,uni)[,-2:-3]
+gera_sh <- function(sh1, sh2){
+  sh1 %>%
+    inner_join(tabela_nomes_funcoes, by = c("FUNÇÃO/SUBFUNÇÃO" = "Funcao_Maius")) %>%
+    rename(Funcao_Maius = `FUNÇÃO/SUBFUNÇÃO`) %>%
+    mutate_at(2:14, funs(./1000000)) %>% #wow! pq as primeiras tabelas estão em R$, as segundas em milhões
+    select(15,16,1,4:14) %>% # desprezando os anos de 2000 e 2001 (colunas 2 e 3), por estarem incompletos.
+    left_join(sh2, by = c("Funcao" = "X__1"))    
+}
+
+sh_fun_con <- gera_sh(fun_con, fun_con2)
+sh_fun_mun <- gera_sh(fun_mun, fun_mun2)
+sh_fun_est <- gera_sh(fun_est, fun_est2)
+sh_fun_uni <- gera_sh(fun_uni, fun_uni2)
+
+# acrescentar o "ente" em cada tabela e juntar tudo
+
+lista_dfs <- list(sh_fun_con, sh_fun_mun, sh_fun_est, sh_fun_uni)
+entes <- c("Consolidado", "Municípios", "Estados", "União")
+
+for (i in 1:4){
+  lista_dfs[[i]]$ente <- entes[i]
+}
+
+sh_fun <- bind_rows(lista_dfs)
+sh_fun <- sh_fun[,c(1:3,20,4:19)]
+
+# código antigo
+#
+# mun <- fun_mun[which(fun_mun$`FUNÇÃO/SUBFUNÇÃO` %in% funcoes_de_interesse),]
+# mun$ente <- "Municípios"
+# 
+# est <- fun_est[which(fun_est$`FUNÇÃO/SUBFUNÇÃO` %in% funcoes_de_interesse),]
+# est$ente <- "Estados"
+# 
+# uni <- fun_uni[which(fun_uni$`FUNÇÃO/SUBFUNÇÃO` %in% funcoes_de_interesse),]
+# uni$ente <- "União"
+# 
+# serie_funcoes <- rbind(mun,est,uni)[,-2:-3]
+
+# normalizar pelo pib agora
+
+## importa pib do IpeaData
 
 library(ipeaData)
 pibs <- ipeadata("BM12_PIBAC12")
-pibs <- pibs[MES=="12" & ANO %in% (2002:2012)]$VALVALOR
+pibs <- pibs[MES=="12" & ANO %in% (2002:2017)]$VALVALOR
+
+## incorpora na mão pib de 2017 que ainda não estava disponível no pacote ipeaData. Peguei do IBGE.
+
+pibs <- c(pibs, 6559940)
 
 for (i in 1:length(pibs)){
-  serie_funcoes[,i+1] <- round(serie_funcoes[,i+1] / (pibs[i] * 1000000),4)
+  sh_fun[,i+4] <- round(sh_fun[,i+4] / pibs[i], 4)
 }
 
-serie_f <- serie_funcoes %>%
-  rename(Funcao = `FUNÇÃO/SUBFUNÇÃO`) %>%
-  gather(2:12, key="Ano", value="Valor")
+# passando para um formato tidy
+
+sh_fun <- sh_fun %>%
+  gather(5:20, key="Ano", value="Valor")
+
+
+# funcoes para plotar os gráficos de barra
 
 plot_funcoes <- function(funcao){
   ggplot(
-      serie_f %>% filter(Funcao==funcao), 
+      sh_fun %>% filter(Funcao_Maius==funcao & ente != "Consolidado"), 
       aes(
         fill = factor(ente, levels = rev(c("União", "Estados", "Municípios"))), 
         y = Valor, 
@@ -218,7 +277,7 @@ plot_funcoes <- function(funcao){
       x = NULL,
       y = NULL,
       fill = "Ente",
-      title = paste("Distribuição das despesas com ", tolower(funcao), " por ente da Federação ","2002\u2013","2012", sep=""),
+      title = paste("Distribuição das despesas com ", tolower(funcao), " por ente da Federação ","2002\u2013","2017", sep=""),
       subtitle = "Em percentuais do PIB."
     ) +
     scale_y_continuous(labels = scales::percent) +
@@ -226,6 +285,10 @@ plot_funcoes <- function(funcao){
     geom_text(aes(label= scales::percent(Valor)),size = 3, position = position_stack(vjust = 0.5), hjust = 0.5, family = "Source Sans Pro", color = "white") +
     tema_BSPN()
 }
+
+funcoes_de_interesse <- c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL", "SEGURANÇA PÚBLICA")
+
+lapply(funcoes_de_interesse, plot_funcoes)
 
 plot_funcoes("EDUCAÇÃO")
 plot_funcoes("SAÚDE")
@@ -238,6 +301,17 @@ plot_funcoes("SEGURANÇA PÚBLICA")
   #geom_area(aes(fill = ente, group = ente), stat = "identity", position="stack")
 
 ```
+## Todas as funções
+
+```{r}
+tabela_sh <- sh_fun %>% 
+  filter(ente == "Consolidado") %>%
+  select(1,5,6) %>%
+  spread(key = "Ano", value = "Valor")
+
+write.csv2(tabela_sh, file="tabela_sh.csv")
+```
+
 
 ## Os ativos
 
@@ -265,7 +339,7 @@ tbl_cores <- data.frame("ente" = levels(ativo$ente),cores)
 
 # funcao de plotagem
 
-plota_sankey <- function(dados, rotulos){
+plota_sankey <- function(dados, rotulos, cor_nos){
   plot_ly(
     type = "sankey",
     orientation = "h",
@@ -279,11 +353,11 @@ plota_sankey <- function(dados, rotulos){
     
     node = list(
       label = rotulos,
-      color = "#004a93", ##004a93
+      color = cor_nos, ##004a93
       pad = 10,
       thickness = 25,
       line = list(
-        color = "",
+        color = cor_nos,
         width = 0)),
     
     hoverlabel = list(
@@ -306,7 +380,9 @@ plota_sankey <- function(dados, rotulos){
 
 # funcao para processar os dados e chamar a função de plotagem
 
-plota_ente <- function(ente_in, dados){
+##### incluir argumento na função para cor dos nós!
+
+plota_ente <- function(ente_in, dados, cor_nos){
   
   if (ente_in == "Consolidado") {
     dados_ente <- dados}
@@ -326,7 +402,7 @@ plota_ente <- function(ente_in, dados){
   matriz <- matriz %>%
     left_join(tbl_cores)
   
-  plota_sankey(matriz, lista_nos)
+  plota_sankey(matriz, lista_nos, cor_nos)
   #return(matriz)
 }
 
