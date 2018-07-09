@@ -1,7 +1,20 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
+
+```{css}
+.dygraph-legend, .dygraph-axis-label {
+  font-family: "Source Sans Pro";
+}
+
+.dygraph-label {
+  font-family: "Source Sans Pro";
+}
+```
+
 
 ```{r}
 library(readxl)
@@ -290,10 +303,10 @@ funcoes_de_interesse <- c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL", "SEGURA
 
 lapply(funcoes_de_interesse, plot_funcoes)
 
-plot_funcoes("EDUCAÇÃO")
-plot_funcoes("SAÚDE")
-plot_funcoes("ASSISTÊNCIA SOCIAL")
-plot_funcoes("SEGURANÇA PÚBLICA")
+# plot_funcoes("EDUCAÇÃO")
+# plot_funcoes("SAÚDE")
+# plot_funcoes("ASSISTÊNCIA SOCIAL")
+# plot_funcoes("SEGURANÇA PÚBLICA")
 
 #ggplot(serie_f %>% filter(Funcao=="EDUCAÇÃO"), aes(x = Ano, y = Valor)) +
   #geom_point(aes(color=ente))+
@@ -328,8 +341,49 @@ hchart(sh_linhas, "line", hcaes(x = "Ano", y = "Valor", group = "Funcao")) %>%
   hc_yAxis(title = list(text = "Valor em percentual do PIB")) %>%
   hc_tooltip(shared = "TRUE")
 
-```
+# com dygraphs
 
+# converter ano em data, e o dataframe em time series
+
+library(xts)
+library(dygraphs)
+
+sh_xts <- sh_linhas
+sh_xts$Ano <- as.Date(paste(sh_xts$Ano, 12, 31, sep = "-"))
+
+sh_xts[2:4] <- NULL 
+sh_xts$Funcao <- as.factor(sh_xts$Funcao)
+sh_xts <- sh_xts %>%
+  spread(key = "Funcao", value = "Valor")
+sh_xts <- xts(sh_xts[,-1], order.by = sh_xts$Ano)
+
+# com div para mostrar legenda separada
+dygraph(sh_xts) %>%
+  dyHighlight(highlightCircleSize = 5, 
+              highlightSeriesBackgroundAlpha = 0.2,
+              highlightSeriesOpts = list(strokeWidth = 3),
+              hideOnMouseOut = FALSE) %>%
+  dyLegend(show = "onmouseover", labelsDiv="labels", labelsSeparateLines = TRUE)
+
+# tentando mostrar só uma legenda por vez
+
+## uhu, funcionou!
+## https://stackoverflow.com/questions/35943583/plain-dygraphs-javascript-options-in-r-shiny
+
+dygraph(sh_xts) %>%
+  dyHighlight(highlightCircleSize = 5, 
+              highlightSeriesBackgroundAlpha = 0.2,
+              highlightSeriesOpts = list(strokeWidth = 3),
+              hideOnMouseOut = FALSE) %>%
+  dyLegend(show = "always") %>%
+  dyCSS(textConnection("
+     .dygraph-legend > span { display: none; }
+     .dygraph-legend > span.highlight { display: inline; }
+  "))
+
+```
+<div id="labels">
+</div>
 
 ## Os ativos
 
@@ -429,18 +483,14 @@ plota_ente <- function(ente_in, dados, cor_nos){
 #dados_Estados <- gera_dados_ente("Estados")
 #dados_Municipios <- gera_dados_ente("Municípios")
 
-plota_ente("Consolidado", ativo)
-plota_ente("Consolidado", passivo)
-
-plota_ente("União")
-plota_ente("Estados")
-plota_ente("Municípios")
+plota_ente("Consolidado", ativo, "#444444")
+plota_ente("Consolidado", passivo, "#333333")
 
 
 ```
 ## Diagrama Consolidado
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-plota_ente("Consolidado")
+#plota_ente("Consolidado")
 ```
 
