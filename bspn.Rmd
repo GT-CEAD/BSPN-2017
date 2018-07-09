@@ -6,12 +6,12 @@ output: html_notebook
 ```{r}
 library(readxl)
 library(tidyverse)
-library(gganimate)
 ```
 ## Despesas por função (aqui!)
 
 ```{r funcao}
 #library(extrafont)
+#font_import()
 #loadfonts()
 
 tres_cores <-c("#F8AC08","#028063","#1E466A")
@@ -310,6 +310,23 @@ tabela_sh <- sh_fun %>%
   spread(key = "Ano", value = "Valor")
 
 write.csv2(tabela_sh, file="tabela_sh.csv")
+
+sh_linhas <- sh_fun %>% 
+  filter(ente == "Consolidado" & !(Funcao %in% c("28 - Encargos Especiais", "09 - Previdência Social"))) %>%
+  mutate(Valor = Valor*100)
+
+library(highcharter)
+
+hchart(sh_linhas, "line", hcaes(x = "Ano", y = "Valor", group = "Funcao"),
+       legend = list(
+         style = list(
+           fontWeight = 'plain'))
+         )
+
+hchart(sh_linhas, "line", hcaes(x = "Ano", y = "Valor", group = "Funcao")) %>%
+  hc_legend(style = list(fontWeight = "plain", color = "#458939")) %>%
+  hc_yAxis(title = list(text = "Valor em percentual do PIB"))
+
 ```
 
 
