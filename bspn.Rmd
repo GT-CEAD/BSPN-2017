@@ -2,6 +2,10 @@
 title: "R Notebook"
 output:
   html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+    highlight: tango
     df_print: paged
 ---
 
@@ -385,6 +389,8 @@ dygraph(sh_xts) %>%
 <div id="labels">
 </div>
 
+# O balanço patrimonial
+
 ## Os ativos
 
 ```{r}
@@ -483,8 +489,8 @@ plota_ente <- function(ente_in, dados, cor_nos){
 #dados_Estados <- gera_dados_ente("Estados")
 #dados_Municipios <- gera_dados_ente("Municípios")
 
-plota_ente("Consolidado", ativo, "#444444")
-plota_ente("Consolidado", passivo, "#333333")
+plota_ente("Consolidado", ativo, "#170dce")
+plota_ente("Consolidado", passivo, "#ce0e0e")
 
 
 ```
