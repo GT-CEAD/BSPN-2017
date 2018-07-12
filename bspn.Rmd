@@ -7,6 +7,7 @@ output:
     theme: cosmo
     highlight: tango
     df_print: paged
+    code_folding: hide
 ---
 
 ```{css}
@@ -17,22 +18,30 @@ output:
 .dygraph-label {
   font-family: "Source Sans Pro";
 }
+
+h1,h2,h3,h4 {
+  color: #004a93;
+}
+
+h2 {
+  font-weight: bold;
+}
 ```
 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(readxl)
 library(tidyverse)
-```
-## Despesas por função (aqui!)
-
-```{r funcao}
-#library(extrafont)
+library(extrafont)
 #font_import()
-#loadfonts()
 
-tres_cores <-c("#F8AC08","#028063","#1E466A")
-tres_cores_pasteis <- c("#FECE60","#63BEAF", "#7A9CBD")
+loadfonts()
+
+tres_cores <-c("#F8AC08","#028063","#6E287C")
+tres_cores_pasteis <- c("#FECE60","#63BEAF", "#BE8EBF")
+
+cor_ativo <- "#1E466A"
+cor_passivo <- "#CA4017"
 
 tema_BSPN <- function(){
     theme_minimal() +
@@ -48,6 +57,141 @@ tema_BSPN <- function(){
       legend.position = 'bottom')
 }
 
+```
+
+O BSPN bla bla bla bla.
+
+# O balanço patrimonial
+
+```{r}
+at <- c(6544011, 3011711)
+pa <- c(sum(at),0)
+rot <- c(NULL, "Passivo a Descoberto")
+
+bp <- data.frame(rot,"Ativo" = at, "Passivo" = pa)
+bp$rot <- c("", "Passivo a Descoberto")
+
+bp2<-bp %>% gather(Ativo, Passivo, key = "Class", value = "Valor")
+
+ggplot(bp2, aes(fill=rot, y=Valor, x=Class)) +
+    coord_flip() +
+    geom_bar( stat="identity", position="fill", width=0.6, color = "grey20", size = 1) 
+
+```
+
+
+## Os ativos
+
+```{r}
+library(plotly)
+
+# le os dados
+
+ativo <- read.csv2("links-ativo.csv")
+ativo$valor <- as.numeric(gsub("[.]", "", ativo$valor))
+
+passivo <- read.csv2("links-passivo.csv")
+passivo$valor <- as.numeric(gsub("[.]", "", passivo$valor))
+
+# cores
+
+mtx_tres_cores <- col2rgb(tres_cores_pasteis)
+
+cores <- NULL
+for (i in 1:dim(mtx_tres_cores)[2] ) {
+  cores <- c(cores, paste("rgba(", mtx_tres_cores[1,i],", ",  mtx_tres_cores[2,i],", ",  mtx_tres_cores[3,i],", 0.7)", sep = ""))
+}
+
+tbl_cores <- data.frame("ente" = levels(ativo$ente),cores)
+
+# funcao de plotagem
+
+plota_sankey <- function(dados, rotulos, cor_nos){
+  plot_ly(
+    type = "sankey",
+    orientation = "h",
+    opacity = 0.6,
+    width = 800,
+    height = 600,
+    textfont = list(
+      family = "Source Sans Pro",
+      color = "#444444",
+      size = 12),
+    
+    node = list(
+      label = rotulos,
+      color = cor_nos, ##004a93
+      pad = 10,
+      thickness = 25,
+      line = list(
+        color = cor_nos,
+        width = 0)),
+    
+    hoverlabel = list(
+      font = list(
+        family = "Source Sans Pro")),
+    
+    link = list(
+      source = dados$src,
+      target = dados$trg,
+      value =  dados$valor,
+      color =  dados$cores)) %>% 
+  
+    layout(
+      title = "",
+      font = list(
+        family = "Source Sans Pro",
+        size = 11,
+        color = "#004a93"))
+}
+
+# funcao para processar os dados e chamar a função de plotagem
+
+##### incluir argumento na função para cor dos nós!
+
+plota_ente <- function(ente_in, dados, cor_nos){
+  
+  if (ente_in == "Consolidado") {
+    dados_ente <- dados}
+    else {dado_ente <- dados %>% filter(ente == ente_in)
+  }
+  
+  lista_nos <- unique(c(levels(dados_ente$up), levels(dados_ente$down)))
+  numeros_nos <- 0:(length(lista_nos)-1)
+  nos <- data.frame(lista_nos, numeros_nos)
+  
+  matriz <- dados_ente %>%
+    left_join(nos, by = c("up" = "lista_nos")) %>%
+    rename(src = numeros_nos) %>%
+    left_join(nos, by = c("down" = "lista_nos")) %>%
+    rename(trg = numeros_nos)
+  
+  matriz <- matriz %>%
+    left_join(tbl_cores)
+  
+  plota_sankey(matriz, lista_nos, cor_nos)
+  #return(matriz)
+}
+
+#dados_consolidado <- gera_dados_ente("Consolidado")
+#dados_Uniao <- gera_dados_ente("União")
+#dados_Estados <- gera_dados_ente("Estados")
+#dados_Municipios <- gera_dados_ente("Municípios")
+
+plota_ente("Consolidado", ativo, cor_ativo)
+plota_ente("Consolidado", passivo, cor_passivo)
+
+
+```
+## Diagrama Consolidado
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#plota_ente("Consolidado")
+```
+
+## Despesas por função (aqui!)
+
+```{r funcao}
 desp_fun <- read_excel("funcao_2017.xlsx")
 
 tabela_nomes_funcoes <- desp_fun[1:28,1:2]
@@ -186,10 +330,6 @@ plot_fun_abs_principais <- ggplot(
 plot_fun
 plot_fun_abs_principais
 plot_fun_abs
-
-
-
-
 ```
 
 ```{r serie-historica-funcao}
@@ -318,34 +458,40 @@ lapply(funcoes_de_interesse, plot_funcoes)
   #geom_area(aes(fill = ente, group = ente), stat = "identity", position="stack")
 
 ```
-## Todas as funções
+## Despesas por função em percentuais do PIB - 2002 a 2017
 
-```{r}
+O gráfico a seguir mostra uma série histórica das despesas consolidadas de todos os entes da federação por função (com a exceção das funções "Previdência" e "Encargos Sociais") em percentuais do PIB, para o período de 2002 a 2017. Passando-se o mouse sobre as linhas é possível destacar cada uma das funções, além de evidenciar o seu valor em cada ano.
+
+### Série histórica em percentuais do PIB
+
+```{r message=FALSE, warning=FALSE}
 tabela_sh <- sh_fun %>% 
   filter(ente == "Consolidado") %>%
   select(1,5,6) %>%
   spread(key = "Ano", value = "Valor")
 
-write.csv2(tabela_sh, file="tabela_sh.csv")
+# write.csv2(tabela_sh, file="tabela_sh.csv")
 
 sh_linhas <- sh_fun %>% 
   filter(ente == "Consolidado" & !(Funcao %in% c("28 - Encargos Especiais", "09 - Previdência Social"))) %>%
   mutate(Valor = Valor*100)
 
-library(highcharter)
+### opção com highcharter. bem legal, mas é pago.
 
-hchart(sh_linhas, "line", hcaes(x = "Ano", y = "Valor", group = "Funcao"),
-       legend = list(
-         style = list(
-           fontWeight = 'plain'))
-         )
+# library(highcharter)
+# 
+# hchart(sh_linhas, "line", hcaes(x = "Ano", y = "Valor", group = "Funcao"),
+#        legend = list(
+#          style = list(
+#            fontWeight = 'plain'))
+#          )
+# 
+# hchart(sh_linhas, "line", hcaes(x = "Ano", y = "Valor", group = "Funcao")) %>%
+#   hc_legend(style = list(fontWeight = "plain", color = "#458939")) %>%
+#   hc_yAxis(title = list(text = "Valor em percentual do PIB")) %>%
+#   hc_tooltip(shared = "TRUE")
 
-hchart(sh_linhas, "line", hcaes(x = "Ano", y = "Valor", group = "Funcao")) %>%
-  hc_legend(style = list(fontWeight = "plain", color = "#458939")) %>%
-  hc_yAxis(title = list(text = "Valor em percentual do PIB")) %>%
-  hc_tooltip(shared = "TRUE")
-
-# com dygraphs
+### com dygraphs
 
 # converter ano em data, e o dataframe em time series
 
@@ -353,7 +499,7 @@ library(xts)
 library(dygraphs)
 
 sh_xts <- sh_linhas
-sh_xts$Ano <- as.Date(paste(sh_xts$Ano, 12, 31, sep = "-"))
+sh_xts$Ano <- as.Date(paste(sh_xts$Ano, 01, 01, sep = "-"))
 
 sh_xts[2:4] <- NULL 
 sh_xts$Funcao <- as.factor(sh_xts$Funcao)
@@ -361,142 +507,112 @@ sh_xts <- sh_xts %>%
   spread(key = "Funcao", value = "Valor")
 sh_xts <- xts(sh_xts[,-1], order.by = sh_xts$Ano)
 
-# com div para mostrar legenda separada
-dygraph(sh_xts) %>%
-  dyHighlight(highlightCircleSize = 5, 
-              highlightSeriesBackgroundAlpha = 0.2,
-              highlightSeriesOpts = list(strokeWidth = 3),
-              hideOnMouseOut = FALSE) %>%
-  dyLegend(show = "onmouseover", labelsDiv="labels", labelsSeparateLines = TRUE)
+# # com div para mostrar legenda separada
+# dygraph(sh_xts) %>%
+#   dyHighlight(highlightCircleSize = 5, 
+#               highlightSeriesBackgroundAlpha = 0.2,
+#               highlightSeriesOpts = list(strokeWidth = 3),
+#               hideOnMouseOut = FALSE) %>%
+#   dyLegend(show = "onmouseover", labelsDiv="labels", labelsSeparateLines = TRUE)
 
 # tentando mostrar só uma legenda por vez
 
-## uhu, funcionou!
-## https://stackoverflow.com/questions/35943583/plain-dygraphs-javascript-options-in-r-shiny
-
 dygraph(sh_xts) %>%
   dyHighlight(highlightCircleSize = 5, 
               highlightSeriesBackgroundAlpha = 0.2,
               highlightSeriesOpts = list(strokeWidth = 3),
               hideOnMouseOut = FALSE) %>%
+  dyAxis("y",
+         pixelsPerLabel = 40, 
+         gridLineColor = "rgb(222,222,222)", 
+         valueFormatter = JS('function(d) {return d+" %"}'),
+         axisLabelFormatter = JS('function(d) {return d+" %"}'),
+         axisLineColor = "white") %>% 
+  dyAxis("x", 
+         pixelsPerLabel = 40, 
+         gridLineColor = "rgb(222,222,222)", 
+         axisLabelFormatter = JS('function(d) {return d.getFullYear()}'), #1
+         rangePad = 5,
+         axisLineColor = "white") %>% 
   dyLegend(show = "always") %>%
-  dyCSS(textConnection("
+  dyCSS(textConnection(" 
      .dygraph-legend > span { display: none; }
      .dygraph-legend > span.highlight { display: inline; }
-  "))
+     .dygraph-legend { font-family: Source Sans Pro; }
+     .dygraph-label { font-family: Source Sans Pro; }
+     .dygraph-axis-label { font-family: Source Sans Pro; }
+  ")) #2
 
-```
-<div id="labels">
-</div>
+# 1: tem que passar uma função em JavaScript (por isso o JS(...)). Por algum motivo, ele estava posicionando no ano posterior, então incluí um -1 na expressão. Aí resolvi mudar a data para 01-01 de cada ano, em vez de 31-12.
+# o que ajudou aqui: https://stackoverflow.com/questions/28915328/how-to-set-x-axis-in-dygraphs-for-r-to-show-just-month/28918684
 
-# O balanço patrimonial
+# 2: as duas primeiras linhas foi o que fizeram o tooltip mostrar apenas o valor da série "hoverada", e não as demais.
+# o que ajudou aqui: https://stackoverflow.com/questions/35943583/plain-dygraphs-javascript-options-in-r-shiny
 
-## Os ativos
-
-```{r}
-library(plotly)
-
-# le os dados
-
-ativo <- read.csv2("links-ativo.csv")
-ativo$valor <- as.numeric(gsub("[.]", "", ativo$valor))
-
-passivo <- read.csv2("links-passivo.csv")
-passivo$valor <- as.numeric(gsub("[.]", "", passivo$valor))
-
-# cores
-
-mtx_tres_cores <- col2rgb(tres_cores_pasteis)
-
-cores <- NULL
-for (i in 1:dim(mtx_tres_cores)[2] ) {
-  cores <- c(cores, paste("rgba(", mtx_tres_cores[1,i],", ",  mtx_tres_cores[2,i],", ",  mtx_tres_cores[3,i],", 0.7)", sep = ""))
-}
-
-tbl_cores <- data.frame("ente" = levels(ativo$ente),cores)
-
-# funcao de plotagem
-
-plota_sankey <- function(dados, rotulos, cor_nos){
-  plot_ly(
-    type = "sankey",
-    orientation = "h",
-    opacity = 0.6,
-    width = 800,
-    height = 600,
-    textfont = list(
-      family = "Source Sans Pro",
-      color = "#444444",
-      size = 12),
-    
-    node = list(
-      label = rotulos,
-      color = cor_nos, ##004a93
-      pad = 10,
-      thickness = 25,
-      line = list(
-        color = cor_nos,
-        width = 0)),
-    
-    hoverlabel = list(
-      font = list(
-        family = "Source Sans Pro")),
-    
-    link = list(
-      source = dados$src,
-      target = dados$trg,
-      value =  dados$valor,
-      color =  dados$cores)) %>% 
-  
-    layout(
-      title = "",
-      font = list(
-        family = "Source Sans Pro",
-        size = 11,
-        color = "#004a93"))
-}
-
-# funcao para processar os dados e chamar a função de plotagem
-
-##### incluir argumento na função para cor dos nós!
-
-plota_ente <- function(ente_in, dados, cor_nos){
-  
-  if (ente_in == "Consolidado") {
-    dados_ente <- dados}
-    else {dado_ente <- dados %>% filter(ente == ente_in)
-  }
-  
-  lista_nos <- unique(c(levels(dados_ente$up), levels(dados_ente$down)))
-  numeros_nos <- 0:(length(lista_nos)-1)
-  nos <- data.frame(lista_nos, numeros_nos)
-  
-  matriz <- dados_ente %>%
-    left_join(nos, by = c("up" = "lista_nos")) %>%
-    rename(src = numeros_nos) %>%
-    left_join(nos, by = c("down" = "lista_nos")) %>%
-    rename(trg = numeros_nos)
-  
-  matriz <- matriz %>%
-    left_join(tbl_cores)
-  
-  plota_sankey(matriz, lista_nos, cor_nos)
-  #return(matriz)
-}
-
-#dados_consolidado <- gera_dados_ente("Consolidado")
-#dados_Uniao <- gera_dados_ente("União")
-#dados_Estados <- gera_dados_ente("Estados")
-#dados_Municipios <- gera_dados_ente("Municípios")
-
-plota_ente("Consolidado", ativo, "#170dce")
-plota_ente("Consolidado", passivo, "#ce0e0e")
 
 
 ```
-## Diagrama Consolidado
+<!--<div id="labels">-->
+<!--</div>-->
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-#plota_ente("Consolidado")
+### Variação de 2002 para 2017
+
+Os gráficos seguintes demonstram os valores dessas despesas, ainda em percentuais do PIB, para os exercícios de 2002 e 2017. Linhas <span style="color: #004a93;">azuis</span> representam valores que aumentaram de 2002 para 2017, as linhas <span style="color: #dd3127;">vermelhas</span>, valores que diminuiram nesse período. As funções são apresentadas em ordem decrescente do valor de 2017 (que está destacado em *negrito* e nas cores azul ou vermelha, conforme as despesas tenham aumentado ou diminuído no período considerado).
+
+```{r dot-plot-prep}
+
+funcoes_top4 <- c("28 - Encargos Especiais", "09 - Previdência Social", "10 - Saúde", "12 - Educação")
+
+# como quero todas as funções, vou pegar o sh_fun, no lugar do sh_linhas. aí tenho que filtrar de novo
+# o "Consolidado" e de novo multiplicar o valor por 100.
+
+sh_dotPlot <- sh_fun %>%
+  filter(Ano %in% c(2002,2017) & ente == "Consolidado") %>%
+  mutate(Valor = Valor*100) %>%
+  spread(key = Ano, value = Valor) %>%
+  mutate(valor2017 = `2017`, # criando essa variável temporária pq quero ordenar o gráfico pela ordem 
+         Funcao = factor(Funcao), # descrescente do valor em 2017
+         Aumentou = `2017` > `2002`) %>% # criando essa booleana para colorir as linhas
+  gather(`2002`,`2017`, key = "Ano", value = "Valor") %>%
+  mutate(Funcao = fct_reorder(Funcao, valor2017, .desc = FALSE)) %>% # reordenando os fatores
+  select(Funcao, Ano, Valor, Aumentou) # dispensando o que não interessa
+
+dotPlot_fun <- function(dados, legenda){
+  ggplot(dados) +
+    geom_path(aes(x = Valor, y = Funcao, color = Aumentou), size = 0.5,
+              arrow = arrow(angle = 30, length = unit(0.05, "inches"), ends = "last", type = "open"))+
+    # geom_point(aes(x = Valor, y= Funcao))+
+     geom_text(
+       aes(x = Valor,
+           y = Funcao,
+           label = round(Valor, 2),
+           hjust = ifelse(Ano == "2002",
+                          ifelse(Aumentou, 1.2, -0.2),
+                          ifelse(Aumentou, -0.2,1.2)),
+           family = "Source Sans Pro",
+           fontface = ifelse(Ano == "2017", "bold", "plain"),
+           color = ifelse(Ano == "2017", Aumentou, "black")),
+       size = 3) +
+    scale_color_manual(values = c("TRUE" = "#004a93", "FALSE" = "#dd3127", "black" = "black"), guide = "none") +
+    labs(
+      x = NULL,
+      y = NULL,
+      title = "Despesas nacionais consolidadas entre 2002 e 2017",
+      subtitle = paste(legenda," Valores em percentuais do PIB."),
+      color = NULL,
+      size = ''
+    ) +
+    tema_BSPN()
+}
+
+dotPlot_fun(sh_dotPlot %>% filter(!(Funcao %in% funcoes_top4)), "Exceto funções Previdência, Encargos Sociais, Saúde e Educação.")
+
 ```
+
+```{r, fig.height = 2, fig.width = 7}
+dotPlot_fun(sh_dotPlot %>% filter(Funcao %in% funcoes_top4), "Apenas funções Previdência, Encargos Sociais, Saúde e Educação.")+expand_limits(x = 32)
+```
+
+
+
 
