@@ -64,34 +64,91 @@ O BSPN bla bla bla bla.
 # O balanço patrimonial
 
 ```{r}
-at <- c(6544011, 3011711)
-pa <- c(sum(at),0)
-rot <- c(NULL, "Passivo a Descoberto")
 
-bp <- data.frame(rot,"Ativo" = at, "Passivo" = pa)
-bp$rot <- c("", "Passivo a Descoberto")
-
-bp2<-bp %>% gather(Ativo, Passivo, key = "Class", value = "Valor")
-
-ggplot(bp2, aes(fill=rot, y=Valor, x=Class)) +
-    coord_flip() +
-    geom_bar( stat="identity", position="fill", width=0.6, color = "grey20", size = 1) 
-
-```
-
-
-## Os ativos
-
-```{r}
-library(plotly)
-
-# le os dados
+# le os dados. é usado no sankey, mas serve para montarmos nosso gráfico geral do BP.
 
 ativo <- read.csv2("links-ativo.csv")
 ativo$valor <- as.numeric(gsub("[.]", "", ativo$valor))
 
 passivo <- read.csv2("links-passivo.csv")
 passivo$valor <- as.numeric(gsub("[.]", "", passivo$valor))
+
+at <- ativo %>%
+  filter(up == "Ativo") %>%
+  group_by(up, ente) %>%
+  summarise(valor = sum(valor)) %>%
+  spread(key = "ente", value = "valor") %>%
+  mutate(Consolidado = sum(.[2:4])) %>%
+  gather(2:5, key = "ente", value = "valor")
+
+pa <- passivo %>%
+  filter(up == "Passivo") %>%
+  group_by(up, ente) %>%
+  summarise(valor = sum(valor)) %>%
+  spread(key = "ente", value = "valor") %>%
+  mutate(Consolidado = sum(.[2:4])) %>%
+  gather(2:5, key = "ente", value = "valor")
+
+# juntando ativo e passivo
+  
+bp <- at %>% 
+  rbind(pa) %>%
+  rename(Classe = up)
+
+# para montar os gráficos do jeito que quero, preciso de uma tabela assim:
+
+# class     | Ativo | Passivo
+# ----------+-------+--------
+# normal    | Ativo | Passivo
+# PaD       | v_PaD |    0
+# PL        |   0   |  v_PL
+# ----------+-------+--------
+
+bp_formatado <- bp %>%
+  spread(key = "Classe", value = "valor") %>%
+  mutate(PaD = ifelse(Passivo > Ativo, Passivo - Ativo, 0),
+         PL  = ifelse(Ativo > Passivo, Ativo - Passivo, 0),
+         normal = 0) %>%
+  gather(PaD, PL, normal, key = "agrup", value = "valor") %>%
+  mutate(
+    Ativo = case_when(
+      agrup == "normal" ~ Ativo,
+      agrup == "PaD" ~ valor,
+      agrup == "PL" ~ 0),
+    Passivo = case_when(
+      agrup == "normal" ~ Passivo,
+      agrup == "PaD" ~ 0,
+      agrup == "PL" ~ valor)) %>%
+  select(-valor) %>%
+  gather(Passivo, Ativo, key = "Classe", value = "valor") %>%
+  mutate(valor = round(valor/1000,2),
+         agrup = factor(agrup, levels = c("PaD", "PL", "normal")),
+         Classe = factor(Classe, levels = c("Passivo", "Ativo")),
+         ente = factor(ente, levels = c("Consolidado", "União", "Estados", "Municípios"))) # só para a ordem sair direito nos gráficos
+  
+                  
+ggplot(bp_formatado, aes(fill = agrup, y = valor, x = factor(Classe))) +
+  coord_flip() +
+  geom_bar( stat="identity", width=0.6, color = "white", size = 1) + # p/ transformar em %, position="fill"
+  scale_y_continuous(labels=function(x) {format(x, big.mark = ".", decimal.mark=",", scientific = FALSE)}) +
+  scale_fill_discrete(labels = c(
+    "normal" = "Ativo e Passivo",
+    "PaD" = "Passivo a Descoberto",
+    "PL" = "Patrimônio Líquido"))+
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = "Grupos de valores",
+    title = "Resumo do Balanço Patrimonial do BSPN 2017",
+    subtitle = "Valores em R$ milhões.") +
+  facet_grid(ente ~ .) + tema_BSPN()
+
+```
+
+## Os ativos
+
+```{r}
+library(plotly)
 
 # cores
 
@@ -525,13 +582,13 @@ dygraph(sh_xts) %>%
   dyAxis("y",
          pixelsPerLabel = 40, 
          gridLineColor = "rgb(222,222,222)", 
-         valueFormatter = JS('function(d) {return d+" %"}'),
-         axisLabelFormatter = JS('function(d) {return d+" %"}'),
+         valueFormatter = ('function(d) {return d+" %"}'),
+         axisLabelFormatter = ('function(d) {return d+" %"}'),
          axisLineColor = "white") %>% 
   dyAxis("x", 
          pixelsPerLabel = 40, 
          gridLineColor = "rgb(222,222,222)", 
-         axisLabelFormatter = JS('function(d) {return d.getFullYear()}'), #1
+         axisLabelFormatter = ('function(d) {return d.getFullYear()}'), #1
          rangePad = 5,
          axisLineColor = "white") %>% 
   dyLegend(show = "always") %>%
