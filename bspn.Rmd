@@ -1,13 +1,13 @@
 ---
-title: "R Notebook"
+title: "O BSPN em Foco"
 output:
   html_document:
-    toc: true
-    toc_float: true
-    theme: cosmo
-    highlight: tango
-    df_print: paged
     code_folding: hide
+    df_print: paged
+    highlight: tango
+    theme: cosmo
+    toc: yes
+    toc_float: yes
 ---
 
 ```{css}
@@ -50,6 +50,7 @@ tema_BSPN <- function(){
       axis.text = element_text(family = "Source Sans Pro", colour = "grey20"),
       title = element_text(face = "bold"),
       plot.subtitle = element_text(face = "plain"),
+      plot.caption = element_text(face = "italic"),
       panel.grid.major = element_blank(), 
       panel.grid.minor = element_blank(),
       legend.text = element_text(size = 8),
@@ -59,11 +60,17 @@ tema_BSPN <- function(){
 
 ```
 
-O BSPN bla bla bla bla.
+O Balanço do Setor Público Nacional (BSPN) é uma publicação anual que apresenta as contas consolidadas da Federação Brasileira. Engloba as contas dos poderes Executivo, Legislativo e Judiciário, incluindo também o Ministério Público e a Defensoria Pública, e contempla as esferas Federal, Estadual, Distrital e Municipal.
 
-# O balanço patrimonial
+Nesta página, destacaremos alguns dos principais dados apresentados no BSPN de 2017 (que pode ser lido em sua versão completa, com todas as suas notas explicativas, [aqui](http://www.tesouro.fazenda.gov.br/documents/10180/665291/CPU_BSPN_2017-v2_Diagramado).
 
-```{r}
+## O balanço patrimonial
+
+O balanço patrimonial evidencia a situação patrominial da entidade pública, elencando seus **ativos** (bens e direitos) e seus **passivos** (obrigações). Quando o ativo é maior do que o passivo, temos um *patrimônio líquido*. No entanto, quando o passivo supera o ativo, temos uma situação de *passivo a descoberto*.
+
+O gráfico a seguir resume o Balanço Patrimonial, demonstrando os valores dos ativos e passivos para a Federação ("consolidado"), para a União, para o conjunto dos Estados e para o conjunto dos Municípios. As ocorrências de patrimônio líquido ou passivo a descoberto estão indicadas no gráfico. 
+
+```{r message=FALSE, warning=FALSE}
 
 # le os dados. é usado no sankey, mas serve para montarmos nosso gráfico geral do BP.
 
@@ -130,6 +137,12 @@ bp_formatado <- bp %>%
 ggplot(bp_formatado, aes(fill = agrup, y = valor, x = factor(Classe))) +
   coord_flip() +
   geom_bar( stat="identity", width=0.6, color = "white", size = 1) + # p/ transformar em %, position="fill"
+  geom_text(aes(label= ifelse(valor == 0, "", format(round(valor,0), big.mark = ".", decimal.mark = ","))),
+                size = 3, 
+                position = position_stack(vjust = 0.5), 
+                hjust = 0.5, 
+                family = "Source Sans Pro", 
+                color = "white") +
   scale_y_continuous(labels=function(x) {format(x, big.mark = ".", decimal.mark=",", scientific = FALSE)}) +
   scale_fill_discrete(labels = c(
     "normal" = "Ativo e Passivo",
@@ -140,14 +153,28 @@ ggplot(bp_formatado, aes(fill = agrup, y = valor, x = factor(Classe))) +
     y = NULL,
     fill = "Grupos de valores",
     title = "Resumo do Balanço Patrimonial do BSPN 2017",
-    subtitle = "Valores em R$ milhões.") +
+    subtitle = "Valores em R$ bilhões.",
+    caption = "Fonte: BSPN 2017, Quadros 2 e 3 - \"Balanço Patrimonial – Ativo e Passivo (Consolidado Nacional e por esfera de governo)\"") +
   facet_grid(ente ~ .) + tema_BSPN()
 
 ```
 
-## Os ativos
+A consolidação das contas públicas passa por um momento de transição. Parte do reconhecimento dos bens, direitos e obrigações ainda não é obrigatória. Os prazos-limite para a implantação dos procedimentos contábeis patrimoniais foram estabelecidos pela [Portaria STN nº 548, de 24 de setembro de 2015](http://www.tesouro.fazenda.gov.br/documents/10180/653221/Item+1+-+Portaria+548-2015+-+PIPCP.pdf), e variam de 2015 a 2025.
 
-```{r}
+Como mencionado anteriormente, o Patrimônio Líquido é o valor residual dos ativos dos entes públicos depois de deduzidos todos seus passivos. O saldo negativo é denominado Passivo a Descoberto. Inclui também o resultado do período e os ajustes da exclusão de saldos de transações recíprocas entre os entes da Federação.
+
+Alinhando-se aos países que apresentam as melhores práticas em contabilidade pública - como o Reino Unido, Estados Unidos, Austrália e Canadá - a inversão do Patrimônio Líquido no BSPN reflete a principal atividade das entidades públicas: a prestação de serviços públicos à população (*service oriented*), ao contrário do que seria esperado em uma empresa, a qual visa principalmente o lucro (*profit oriented*). É natural que os Governos apresentem esse panorama contábil quando assumem compromissos que visem à sustentabilidade de políticas públicas, cuja capacidade para cumpri-los depende dos tributos e das contribuições a serem
+arrecadados no futuro.
+
+### Os ativos
+
+O Quadro 2 do BSPN, "Balanço Patrimonial – Ativo (Consolidado Nacional e por esfera de governo)", demonstra a composição do ativo em seus diversos componentes, conforme a hierarquia estabelecida no Plano de Contas Aplicado ao Setor Público.
+
+Para demonstrar tanto essa hierarquia quanto a participação de cada grupo de entidades públicas (União, Estados e Municípios) nos valores consolidados, apresentamos o diagrama interativo abaixo. Os nós podem ser movimentados à vontade, e os valores podem ser visualizados posicionando-se o mouse sobre o elemento desejado.
+
+As cores dos ramos entre os níveis dos ativos representam os valores dos <span style="color: white; background-color: #f8ac08; letter-spacing: 0.4em;">municípios</span>, <span style="color: white; background-color: #028063; letter-spacing: 0.4em; color: white;">estados</span> e <span style="color: white; background-color: #6e287c; letter-spacing: 0.4em; color: white;">união</span>.
+
+```{r message=FALSE, warning=FALSE}
 library(plotly)
 
 # cores
@@ -236,19 +263,79 @@ plota_ente <- function(ente_in, dados, cor_nos){
 #dados_Municipios <- gera_dados_ente("Municípios")
 
 plota_ente("Consolidado", ativo, cor_ativo)
-plota_ente("Consolidado", passivo, cor_passivo)
-
 
 ```
-## Diagrama Consolidado
+### Os passivos
+
+O diagrama abaixo demonstra, de forma equivalente, as informações do Passivo, conforme o Quadro 3, "Balanço Patrimonial – Passivo (Consolidado Nacional e por esfera de governo)", do BSPN.
+
+Mais uma vez, as cores dos ramos entre os níveis dos ativos representam os valores dos <span style="color: white; background-color: #f8ac08; letter-spacing: 0.4em;">municípios</span>, <span style="color: white; background-color: #028063; letter-spacing: 0.4em; color: white;">estados</span> e <span style="color: white; background-color: #6e287c; letter-spacing: 0.4em; color: white;">união</span>.
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-#plota_ente("Consolidado")
+plota_ente("Consolidado", passivo, cor_passivo)
 ```
 
-## Despesas por função (aqui!)
+## Informações Orçamentárias
 
-```{r funcao}
+### Receitas e Despesas
+
+```{r message=FALSE, warning=FALSE}
+
+recDesp <- read_excel("RecDesp2017.xlsx")
+
+recDesp_formatado <- recDesp %>%
+  gather(5:8, key = "Ente", value = "Valor") %>%
+  group_by(Classe, Ente, Classificador) %>%
+  summarise(Valor = sum(Valor)) %>%
+  ungroup %>%
+  mutate(Classe = factor(Classe),
+         Ente = factor(Ente),
+         Ente = fct_recode(Ente, "Consolidado" = "CONSOLIDADO", "União" = "UNIÃO", "Estados" = "ESTADOS", "Municípios" = "MUNICÍPIOS"),
+         Ente = fct_relevel(Ente, "União", after = 1),
+         Classificador = factor(Classificador),
+         
+         Valor = Valor/1000)
+
+# como empurrar esses labels?
+
+ggplot(recDesp_formatado, aes(fill = Classificador, y = Valor, x = Classe)) +
+  coord_flip() +
+  geom_bar(stat="identity", width=0.6, color = "white", size = 1) + # p/ transformar em %, position="fill"
+  geom_text(aes(label= ifelse(Valor == 0, "", format(round(Valor,0), big.mark = ".", decimal.mark = ",")), nudge_x = ifelse(Classe == "Receitas", -5, +5)),
+                size = 3, 
+                hjust = 0.5, 
+                position = position_stack(vjust = 0.5),
+                family = "Source Sans Pro", 
+                color = "white") +
+  scale_y_continuous(labels=function(x) {format(x, big.mark = ".", decimal.mark=",", scientific = FALSE)}) +
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = "Agrupamentos",
+    title = "Resumo das Receitas e Despesas do BSPN 2017",
+    subtitle = "Valores em R$ milhões.",
+    caption = "Fonte: BSPN 2017, Quadros 9 e 10, \"DEMONSTRATIVO DA EXECUÇÃO ORÇAMENTÁRIA\"") +
+  facet_grid(Ente ~ .) + tema_BSPN()
+
+```
+
+
+### Despesas por Função
+
+#### Despesas de 2017
+
+Nos termos do Manual Técnico de Orçamento de 2018, produzido pela Secretaria de Orçamento Federal:
+
+> A classificação funcional é formada por funções e subfunções e busca responder basicamente à indagação “em que áreas de despesa a ação governamental será realizada?”. [...] A atual classificação funcional foi instituída pela Portaria no 42, de 14 de abril de 1999, do então Ministério do Orçamento e Gestão (MOG), e é composta de um rol de funções e subfunções prefixadas, que servem como agregador dos gastos públicos por área de ação governamental nos três níveis de Governo. Trata-se de uma classificação independente dos programas e de aplicação comum e obrigatória, no âmbito dos Municípios, dos Estados, do Distrito Federal e da União, o
+que permite a consolidação nacional dos gastos do setor público.
+
+Assim, essa é uma classificação adotada em âmbito nacional, que indica as áreas da atuação governamental em que foram aplicadas as despesas públicas.
+
+O Quadro 11 do BSPN 2017 demonstra os valores executados pela União, Estados e Municípios, bem como os valores consolidados, por função de governo.
+
+O gráfico a seguir busca demonstrar a participação de cada ente da federação no total da despesa consolidada em que cada função.
+
+```{r funcao, message=FALSE, warning=FALSE}
 desp_fun <- read_excel("funcao_2017.xlsx")
 
 tabela_nomes_funcoes <- desp_fun[1:28,1:2]
@@ -260,8 +347,9 @@ desp_fun <- desp_fun[,c(1,2,9,10,3:8)]
 
 d_fun <- desp_fun[c(1:28,31),] %>%
   gather(-1:-4, key="Ente_Ano", value="valor") %>%
-  separate(Ente_Ano, into = c("Ente", "Ano")) # por padrão ele separa por qq caractere não-alfanumérico, 
-                                              # ou se usaria um {,sep = "_"}
+  separate(Ente_Ano, into = c("Ente", "Ano")) %>% # por padrão ele separa por qq caractere não-alfanumérico, 
+                                                  # ou se usaria um {,sep = "_"}
+    mutate(Ente = factor(Ente, levels = rev(c("UNIÃO", "ESTADOS", "MUNICÍPIOS")))) 
 
 # uma tabelinha com totais e uma versão do dataframe com esses totais para ordenar o gráfico de vlrs absolutos
 
@@ -318,10 +406,12 @@ plot_fun_dark <- ggplot(d_fun %>% filter(Ano=="2017" & !is.na(Funcao)), aes(fill
 # fct_reorder muito útil! só que tenho q colocar em ordem descendente de PERCENTUAL, e não de valor. preciso
 # criar essa variável.
 
+legenda <- "Fonte: BSPN 2017, Quadro 11. Despesa Orçamentária Empenhada por Função (Consolidado Nacional e por esfera de governo)"
+
 plot_fun <- ggplot(
       d_fun %>% filter(Ano=="2017" & !is.na(Funcao)), 
       aes(
-        fill = factor(Ente, levels = rev(c("UNIÃO", "ESTADOS", "MUNICÍPIOS"))), 
+        fill = Ente, 
         y = valor, 
         x = fct_reorder(Funcao,pctU2017,desc=TRUE))) +
     coord_flip() +
@@ -331,7 +421,8 @@ plot_fun <- ggplot(
       y = NULL,
       fill = "Ente",
       title = paste("Distribuição das despesas por ente da Federação ","\u2013"," 2017"),
-      subtitle = "Conforme a Classificação Funcional. Por ordem decrescente da participação da União no total da despesa."
+      subtitle = "Por ordem decrescente da participação da União no total da despesa.",
+      caption = legenda
     ) +
     scale_y_continuous(labels = scales::percent) +
     scale_fill_manual(values = tres_cores) +
@@ -340,10 +431,17 @@ plot_fun <- ggplot(
 #reais <- scales::dollar_format(prefix = "R$ ", suffix = " bilhões", largest_with_cents = 1000, big.mark=".", decimal.mark=",")
 #reais(10000)
 
+plot_fun
+```
+
+Além da participação no total, é interessante visualizar os valores executados pelos governos da federação em cada área de governo. No entanto, como as despesas nas funções Encargos Especiais (que incluem as despesas da dívida pública federal) e Previdência Social (que incluem os pagamentos de benefícios previdenciários do RGPS, na União, e do RPPS, em todos os entes) representam valores muito superiores aos das demais funções, as informações foram dividas em dois gráficos: um com as funções Encargos Especiais e Previdência Social apresentadas juntamente com o total das demais funções, e um outro detalhando apenas essas demais funções.
+
+```{r message=FALSE, warning=FALSE}
+
 plot_fun_abs <- ggplot(
       d_fun_tot %>% filter(Ano=="2017" & !is.na(Funcao) & !(Funcao %in% c("28 - Encargos Especiais", "09 - Previdência Social"))), 
       aes(
-        fill = factor(Ente, levels = rev(c("UNIÃO", "ESTADOS", "MUNICÍPIOS"))), 
+        fill = Ente, 
         y = valor/1000, 
         x = fct_reorder(Funcao,soma_funcao,desc=TRUE))) +
     coord_flip() +
@@ -353,6 +451,7 @@ plot_fun_abs <- ggplot(
       y = NULL,
       fill = "Ente",
       title = paste("Despesas totais por Função ","\u2013"," 2017"),
+      caption = legenda,
       subtitle = "Em bilhões de reais. Exceto funções \"28 - Encargos Especiais\" e \"09 - Previdência Social\"."
     ) +
     #scale_y_discrete(breaks = c(0,100,200,300), labels = c("0","100","200","300")) +
@@ -366,7 +465,7 @@ formata_BR <- scales::format_format(big.mark = ".", decimal.mark = ",", scientif
 plot_fun_abs_principais <- ggplot(
       d_fun_principais, 
       aes(
-        fill = factor(Ente, levels = rev(c("UNIÃO", "ESTADOS", "MUNICÍPIOS"))), 
+        fill = Ente,
         y = valor/1000, 
         x = fct_rev(Funcao))) +
     coord_flip() +
@@ -376,7 +475,8 @@ plot_fun_abs_principais <- ggplot(
       y = NULL,
       fill = "Ente",
       title = paste("Despesas totais por Função ","\u2013"," 2017"),
-      subtitle = "Em bilhões de reais."
+      subtitle = "Em bilhões de reais.",
+      caption = legenda
     ) +
     #scale_y_discrete(breaks = c(0,100,200,300), labels = c("0","100","200","300")) +
     #scale_y_continuous(limits = c(0,max(subset(d_fun_tot, d_fun_tot$Ano == "2017")$soma_funcao)/1000)) +
@@ -384,12 +484,53 @@ plot_fun_abs_principais <- ggplot(
     scale_fill_manual(values = tres_cores) +
     tema_BSPN()
 
-plot_fun
 plot_fun_abs_principais
 plot_fun_abs
 ```
 
-```{r serie-historica-funcao}
+Esse último gráfico é reapresentado a seguir com uma disposição diferente, que talvez facilite a visualização das informações.
+
+```{r message=FALSE, warning=FALSE}
+plot_fun_abs_facet <- ggplot(
+      d_fun_tot %>% filter(Ano=="2017" & !is.na(Funcao) & !(Funcao %in% c("28 - Encargos Especiais", "09 - Previdência Social"))), 
+      aes(
+        fill = Ente, 
+        y = valor/1000, 
+        x = fct_reorder(Funcao,soma_funcao,desc=TRUE))) +
+    coord_flip() +
+    geom_bar(stat = "identity", width=0.6, color = "white", size = 1) +
+    geom_text(aes(label = format(round(valor/1000,1), big.mark = ".", decimal.mark = ","),
+                  y = 170, #y = valor/1000 + 5,
+                  colour = Ente),
+                size = 3,
+                vjust = 0,
+                hjust = 1,
+                family = "Source Sans Pro") +
+    labs(
+      x = NULL,
+      y = NULL,
+      fill = "Ente",
+      title = paste("Despesas totais por Função ","\u2013"," 2017"),
+      caption = legenda,
+      subtitle = "Em bilhões de reais. Exceto funções \"28 - Encargos Especiais\" e \"09 - Previdência Social\"."
+    ) +
+    scale_y_continuous(limits = c(0,170)) +
+    scale_fill_manual(values = tres_cores) +
+    scale_colour_manual(values = tres_cores) +
+    tema_BSPN() + facet_wrap(~Ente) + guides(colour = FALSE) # para não aparecer a legenda das cores do text
+
+plot_fun_abs_facet
+```
+
+#### Séries históricas
+
+A classificação funcional possui alguns atrativos em relação às demais classificações da despesa pública. Primeiramente, é uma classificação nacional, utilizada por todos os municípios, estados, Distrito Federal e União. Além disso, é uma classificação bastante estável, para os padrões brasileiros: o atual rol de funções é o mesmo desde 2002. Por fim, é uma classificação que trata de conceitos mais próximos da realidade dos cidadãos, por segmentar as despesas em áreas, em grande parte, facilmente reconhecíveis como "Saúde", "Educação", "Segurança Pública", "Assistência Social", "Previdência Social" etc.
+
+Diante de tudo isso, análises sobre o comportamento histórico das despesas por função, nas três esferas de governo, podem ser bastante interessantes. Para padronizar e facilitar a comparação entre exercícios diferentes, todos os valores apresentados nesta seção se referem a percentuais em relação ao PIB do exercício.
+
+Comecemos por analisar o comportamento das despesas nacionais, segmentadas por esfera de governo, em quatro das principais áreas da atuação governamental: saúde, educação, assistência social e segurança pública. 
+
+```{r serie-historica-funcao, message=FALSE, warning=FALSE}
 
 fun_mun <- read_excel("consol_serie.xls", sheet="Funcao Municipios",skip=11,trim_ws=FALSE)
 fun_est <- read_excel("consol_serie.xls", sheet="Funcao Estados",skip=11,trim_ws=FALSE)
@@ -515,11 +656,8 @@ lapply(funcoes_de_interesse, plot_funcoes)
   #geom_area(aes(fill = ente, group = ente), stat = "identity", position="stack")
 
 ```
-## Despesas por função em percentuais do PIB - 2002 a 2017
 
-O gráfico a seguir mostra uma série histórica das despesas consolidadas de todos os entes da federação por função (com a exceção das funções "Previdência" e "Encargos Sociais") em percentuais do PIB, para o período de 2002 a 2017. Passando-se o mouse sobre as linhas é possível destacar cada uma das funções, além de evidenciar o seu valor em cada ano.
-
-### Série histórica em percentuais do PIB
+O gráfico a seguir mostra uma série histórica das despesas totais (consolidadas) de todos os entes da federação por função (com a exceção das funções "Previdência" e "Encargos Sociais") em percentuais do PIB, para o período de 2002 a 2017. Passando-se o mouse sobre as linhas é possível destacar cada uma das funções, além de evidenciar o valor da despesa em cada ano.
 
 ```{r message=FALSE, warning=FALSE}
 tabela_sh <- sh_fun %>% 
@@ -612,11 +750,11 @@ dygraph(sh_xts) %>%
 <!--<div id="labels">-->
 <!--</div>-->
 
-### Variação de 2002 para 2017
+Por fim, os gráficos seguintes demonstram os valores dessas despesas, ainda em percentuais do PIB, para os exercícios de 2002 e 2017. Linhas <span style="color: #004a93;">azuis</span> representam valores que aumentaram de 2002 para 2017, as linhas <span style="color: #dd3127;">vermelhas</span>, valores que diminuiram nesse período. As funções são apresentadas em ordem decrescente do valor de 2017 (que está destacado em *negrito* e nas cores azul ou vermelha, conforme as despesas tenham aumentado ou diminuído no período considerado).
 
-Os gráficos seguintes demonstram os valores dessas despesas, ainda em percentuais do PIB, para os exercícios de 2002 e 2017. Linhas <span style="color: #004a93;">azuis</span> representam valores que aumentaram de 2002 para 2017, as linhas <span style="color: #dd3127;">vermelhas</span>, valores que diminuiram nesse período. As funções são apresentadas em ordem decrescente do valor de 2017 (que está destacado em *negrito* e nas cores azul ou vermelha, conforme as despesas tenham aumentado ou diminuído no período considerado).
+A ideia é evidenciar as principais variações de 2002 para 2017.
 
-```{r dot-plot-prep}
+```{r dot-plot-prep, message=FALSE, warning=FALSE}
 
 funcoes_top4 <- c("28 - Encargos Especiais", "09 - Previdência Social", "10 - Saúde", "12 - Educação")
 
@@ -666,7 +804,7 @@ dotPlot_fun(sh_dotPlot %>% filter(!(Funcao %in% funcoes_top4)), "Exceto funçõe
 
 ```
 
-```{r, fig.height = 2, fig.width = 7}
+```{r fig.height=2, fig.width=7, message=FALSE, warning=FALSE}
 dotPlot_fun(sh_dotPlot %>% filter(Funcao %in% funcoes_top4), "Apenas funções Previdência, Encargos Sociais, Saúde e Educação.")+expand_limits(x = 32)
 ```
 
