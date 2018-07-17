@@ -33,6 +33,7 @@ h2 {
 library(readxl)
 library(tidyverse)
 library(extrafont)
+library(RColorBrewer)
 #font_import()
 
 loadfonts()
@@ -284,6 +285,7 @@ plota_ente("Consolidado", passivo, cor_passivo)
 recDesp <- read_excel("RecDesp2017.xlsx")
 
 recDesp_formatado <- recDesp %>%
+  filter(!(Classificador %in% c("Superávit", "Déficit"))) %>%
   gather(5:8, key = "Ente", value = "Valor") %>%
   group_by(Classe, Ente, Classificador) %>%
   summarise(Valor = sum(Valor)) %>%
@@ -293,29 +295,50 @@ recDesp_formatado <- recDesp %>%
          Ente = fct_recode(Ente, "Consolidado" = "CONSOLIDADO", "União" = "UNIÃO", "Estados" = "ESTADOS", "Municípios" = "MUNICÍPIOS"),
          Ente = fct_relevel(Ente, "União", after = 1),
          Classificador = factor(Classificador),
-         
-         Valor = Valor/1000)
+         Classificador = fct_relevel(Classificador, "Dívida", "Operações de Crédito", "Investimentos", "Transferências", "Outras despesas correntes", "Outras Receitas", "Pessoal", "Tributos", after = 0),
+         Valor = Valor/1000) %>%
+  filter(Valor > 20)
 
 # como empurrar esses labels?
 
-ggplot(recDesp_formatado, aes(fill = Classificador, y = Valor, x = Classe)) +
+cores_rec_desp <- brewer.pal(8, "Spectral")
+cores_legenda <- c("Dívida" = cores_rec_desp[1], 
+                 "Operações de Crédito" = cores_rec_desp[8], 
+                 "Investimentos" = cores_rec_desp[2], 
+                 "Transferências"= cores_rec_desp[7], 
+                 "Outras despesas correntes" = cores_rec_desp[3], 
+                 "Outras Receitas" = cores_rec_desp[6], 
+                 "Pessoal" = cores_rec_desp[4], 
+                 "Tributos" = cores_rec_desp[5])
+
+ggplot(recDesp_formatado, aes(fill = Classificador, y = Valor, x = Ente)) +
   coord_flip() +
-  geom_bar(stat="identity", width=0.6, color = "white", size = 1) + # p/ transformar em %, position="fill"
-  geom_text(aes(label= ifelse(Valor == 0, "", format(round(Valor,0), big.mark = ".", decimal.mark = ",")), nudge_x = ifelse(Classe == "Receitas", -5, +5)),
+  geom_bar(stat="identity", width=0.6, color = "white", size = 1) + 
+  geom_text(aes(label= ifelse(Valor == 0, "", format(round(Valor,0), big.mark = ".", decimal.mark = ","))),
                 size = 3, 
                 hjust = 0.5, 
                 position = position_stack(vjust = 0.5),
                 family = "Source Sans Pro", 
-                color = "white") +
+                color = "grey20") +
+  geom_text(aes(label = ifelse(Ente != "Consolidado", "", paste0(Classificador)),
+                vjust = ifelse(Classificador == "Investimentos", -2.6, 2.6)),
+                #color = Classificador), # se fosse colocar os rótulos com as mesmas cores
+                size = 2,
+                color = "grey20",
+                hjust = 0,
+                position = position_stack(vjust = 0),
+                family = "Source Sans Pro") +
   scale_y_continuous(labels=function(x) {format(x, big.mark = ".", decimal.mark=",", scientific = FALSE)}) +
+  scale_fill_manual(values = cores_legenda) +
+  # scale_color_manual(values = cores_legenda) + #se fosse colocar os rótulos com as mesmas cores
   labs(
     x = NULL,
     y = NULL,
-    fill = "Agrupamentos",
+    fill = "Despesas \n\nReceitas",
     title = "Resumo das Receitas e Despesas do BSPN 2017",
     subtitle = "Valores em R$ milhões.",
     caption = "Fonte: BSPN 2017, Quadros 9 e 10, \"DEMONSTRATIVO DA EXECUÇÃO ORÇAMENTÁRIA\"") +
-  facet_grid(Ente ~ .) + tema_BSPN()
+  facet_grid(Classe ~ .) + tema_BSPN() #+ guides(color = FALSE) # se fosse colocar rótulos c/ cores
 
 ```
 
