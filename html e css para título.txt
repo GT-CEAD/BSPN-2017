@@ -1,0 +1,20 @@
+YAML:
+title: "<div>O BSPN <span>em Foco</span></div>"
+
+css:
+
+h1 { 
+  color: #004a93;
+  font-weight: bold;
+  }
+
+h1 div {
+  border: 2px solid #004a93;
+  display:inline;
+}
+
+h1 span {
+  color: white;
+  font-weight: normal;
+  background-color: #004a93;
+}

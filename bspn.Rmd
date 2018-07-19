@@ -4,13 +4,14 @@ output:
   html_document:
     code_folding: hide
     df_print: paged
-    highlight: tango
+    highlight: zenburn
     theme: cosmo
     toc: yes
+    toc_depth: 3
     toc_float: yes
 ---
 
-```{css}
+```{css, echo=FALSE}
 .dygraph-legend, .dygraph-axis-label {
   font-family: "Source Sans Pro";
 }
@@ -19,13 +20,23 @@ output:
   font-family: "Source Sans Pro";
 }
 
-h1,h2,h3,h4 {
+h1, h2,h3,h4 {
   color: #004a93;
 }
 
-h2 {
+h1, h2 {
   font-weight: bold;
 }
+
+blockquote {
+  font-size: 12px;
+  background-color: #edeff9; 
+}
+
+.d3tree3 text {
+  font-family: "Source Sans Pro";
+}
+
 ```
 
 
@@ -34,6 +45,14 @@ library(readxl)
 library(tidyverse)
 library(extrafont)
 library(RColorBrewer)
+library(treemap)
+library(d3Tree)
+
+# devtools::install_github("gluc/data.tree")
+# devtools::install_github("timelyportfolio/d3treeR")
+
+library(d3treeR)
+
 #font_import()
 
 loadfonts()
@@ -63,7 +82,7 @@ tema_BSPN <- function(){
 
 O Balanço do Setor Público Nacional (BSPN) é uma publicação anual que apresenta as contas consolidadas da Federação Brasileira. Engloba as contas dos poderes Executivo, Legislativo e Judiciário, incluindo também o Ministério Público e a Defensoria Pública, e contempla as esferas Federal, Estadual, Distrital e Municipal.
 
-Nesta página, destacaremos alguns dos principais dados apresentados no BSPN de 2017 (que pode ser lido em sua versão completa, com todas as suas notas explicativas, [aqui](http://www.tesouro.fazenda.gov.br/documents/10180/665291/CPU_BSPN_2017-v2_Diagramado).
+Nesta página, destacaremos alguns dos principais dados apresentados no BSPN de 2017 (que pode ser lido em sua versão completa, com todas as suas notas explicativas, [aqui](http://www.tesouro.fazenda.gov.br/documents/10180/665291/CPU_BSPN_2017-v2_Diagramado)).
 
 ## O balanço patrimonial
 
@@ -173,7 +192,7 @@ O Quadro 2 do BSPN, "Balanço Patrimonial – Ativo (Consolidado Nacional e por 
 
 Para demonstrar tanto essa hierarquia quanto a participação de cada grupo de entidades públicas (União, Estados e Municípios) nos valores consolidados, apresentamos o diagrama interativo abaixo. Os nós podem ser movimentados à vontade, e os valores podem ser visualizados posicionando-se o mouse sobre o elemento desejado.
 
-As cores dos ramos entre os níveis dos ativos representam os valores dos <span style="color: white; background-color: #f8ac08; letter-spacing: 0.4em;">municípios</span>, <span style="color: white; background-color: #028063; letter-spacing: 0.4em; color: white;">estados</span> e <span style="color: white; background-color: #6e287c; letter-spacing: 0.4em; color: white;">união</span>.
+As cores dos ramos entre os níveis dos ativos representam os valores dos <span style="color: white; background-color: #f8ac08; letter-spacing: 0.1em;">municípios</span>, <span style="color: white; background-color: #028063; letter-spacing: 0.1em; color: white;">estados</span> e <span style="color: white; background-color: #6e287c; letter-spacing: 0.1em; color: white;">união</span>.
 
 ```{r message=FALSE, warning=FALSE}
 library(plotly)
@@ -184,7 +203,7 @@ mtx_tres_cores <- col2rgb(tres_cores_pasteis)
 
 cores <- NULL
 for (i in 1:dim(mtx_tres_cores)[2] ) {
-  cores <- c(cores, paste("rgba(", mtx_tres_cores[1,i],", ",  mtx_tres_cores[2,i],", ",  mtx_tres_cores[3,i],", 0.7)", sep = ""))
+  cores <- c(cores, paste("rgba(", mtx_tres_cores[1,i],", ",  mtx_tres_cores[2,i],", ",  mtx_tres_cores[3,i],", 0.8)", sep = ""))
 }
 
 tbl_cores <- data.frame("ente" = levels(ativo$ente),cores)
@@ -266,11 +285,12 @@ plota_ente <- function(ente_in, dados, cor_nos){
 plota_ente("Consolidado", ativo, cor_ativo)
 
 ```
+
 ### Os passivos
 
 O diagrama abaixo demonstra, de forma equivalente, as informações do Passivo, conforme o Quadro 3, "Balanço Patrimonial – Passivo (Consolidado Nacional e por esfera de governo)", do BSPN.
 
-Mais uma vez, as cores dos ramos entre os níveis dos ativos representam os valores dos <span style="color: white; background-color: #f8ac08; letter-spacing: 0.4em;">municípios</span>, <span style="color: white; background-color: #028063; letter-spacing: 0.4em; color: white;">estados</span> e <span style="color: white; background-color: #6e287c; letter-spacing: 0.4em; color: white;">união</span>.
+Mais uma vez, as cores dos ramos entre os níveis dos ativos representam os valores dos <span style="color: white; background-color: #f8ac08; letter-spacing: 0.1em;">municípios</span>, <span style="color: white; background-color: #028063; letter-spacing: 0.1em; color: white;">estados</span> e <span style="color: white; background-color: #6e287c; letter-spacing: 0.1em; color: white;">união</span>.
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 plota_ente("Consolidado", passivo, cor_passivo)
@@ -278,7 +298,23 @@ plota_ente("Consolidado", passivo, cor_passivo)
 
 ## Informações Orçamentárias
 
+O BSPN também contempla informações orçamentárias dos entes da Federação, apresentando o demonstrativo da execução orçamentária, com as receitas e despesas executadas, e o demonstrativo das despesas por função.
+
 ### Receitas e Despesas
+
+Como informado na Nota Explicativa nº 4, "Escopo", da íntegra do Balanço do Setor Público Nacional:
+
+<blockquote>
+
+O Demonstrativo da Execução Orçamentária apresenta as receitas e despesas executadas conforme disposto no art. 35 da Lei nº 4.320, de 17 de março de 1964. Desse modo, nele são apresentadas as receitas arrecadadas e as despesas empenhadas no exercício de 2017. 
+
+As linhas de desdobramento das receitas e das despesas seguem as classificações orçamentárias dispostas na Portaria Interministerial STN/SOF nº 163, de 4 de maio de 2001, adaptadas à estrutura da DCA.
+
+Assim, as receitas são evidenciadas por categoria econômica, origem e espécie e as despesas por categoria econômica e grupo de natureza.
+
+</blockquote>
+
+O gráfico a seguir busca resumir as informações dos Quadros 8 e 9 do BSPN, que apresentam as receitas e despesas orçamentárias do exercício de 2017, considerando a receitas _arrecadadas_ e as despesas _empenhadas_.
 
 ```{r message=FALSE, warning=FALSE}
 
@@ -296,7 +332,9 @@ recDesp_formatado <- recDesp %>%
          Ente = fct_relevel(Ente, "União", after = 1),
          Classificador = factor(Classificador),
          Classificador = fct_relevel(Classificador, "Dívida", "Operações de Crédito", "Investimentos", "Transferências", "Outras despesas correntes", "Outras Receitas", "Pessoal", "Tributos", after = 0),
-         Valor = Valor/1000) %>%
+         Valor = Valor/1000)
+
+recDesp_filtrado <- recDesp_formatado %>%
   filter(Valor > 20)
 
 # como empurrar esses labels?
@@ -311,16 +349,17 @@ cores_legenda <- c("Dívida" = cores_rec_desp[1],
                  "Pessoal" = cores_rec_desp[4], 
                  "Tributos" = cores_rec_desp[5])
 
-ggplot(recDesp_formatado, aes(fill = Classificador, y = Valor, x = Ente)) +
+ggplot(recDesp_filtrado, aes(fill = Classificador, y = Valor, x = Ente)) +
   coord_flip() +
   geom_bar(stat="identity", width=0.6, color = "white", size = 1) + 
-  geom_text(aes(label= ifelse(Valor == 0, "", format(round(Valor,0), big.mark = ".", decimal.mark = ","))),
-                size = 3, 
+  geom_text(aes(label= ifelse(Valor == 0, "", format(round(Valor,0), big.mark = ".", decimal.mark = ",")),
+                vjust = ifelse(Classe == "Despesas" & Ente == "Estados" & Classificador == "Investimentos", -2, 0.5)),
+                size = 2.5, 
                 hjust = 0.5, 
                 position = position_stack(vjust = 0.5),
                 family = "Source Sans Pro", 
                 color = "grey20") +
-  geom_text(aes(label = ifelse(Ente != "Consolidado", "", paste0(Classificador)),
+  geom_text(aes(label = ifelse(Ente != "Consolidado", "", paste0(Classificador)), # sem esse paste, ele mostra a posição do classificador no vetor "Classificador"
                 vjust = ifelse(Classificador == "Investimentos", -2.6, 2.6)),
                 #color = Classificador), # se fosse colocar os rótulos com as mesmas cores
                 size = 2,
@@ -336,10 +375,54 @@ ggplot(recDesp_formatado, aes(fill = Classificador, y = Valor, x = Ente)) +
     y = NULL,
     fill = "Despesas \n\nReceitas",
     title = "Resumo das Receitas e Despesas do BSPN 2017",
-    subtitle = "Valores em R$ milhões.",
+    subtitle = "Valores em R$ bilhões.",
     caption = "Fonte: BSPN 2017, Quadros 9 e 10, \"DEMONSTRATIVO DA EXECUÇÃO ORÇAMENTÁRIA\"") +
   facet_grid(Classe ~ .) + tema_BSPN() #+ guides(color = FALSE) # se fosse colocar rótulos c/ cores
 
+```
+
+Uma outra forma de visualizar essas informações é por meio do chamado "tree map". No gráfico das receitas abaixo, a área de cada retângulo é proporcional aos valores que eles representam. Os valores são apresentados primeiramente divididos por cada classificador da **receita**. Observe que as cores das receitas são as mesmas das cores utilizadas no gráfico anterior, para manter coerência.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+df_cores <- data.frame("Classificador" = names(cores_legenda), "Cor" = unname(cores_legenda))
+
+recTree <- recDesp_filtrado %>%
+  filter(Ente != "Consolidado" & Classe == "Receitas") %>%
+  left_join(df_cores)
+
+despTree <- recDesp_filtrado %>%
+  filter(Ente != "Consolidado" & Classe == "Despesas") %>%
+  left_join(df_cores)
+
+grafico_treemap <- function(dados, titulo) {
+  treemap(dados, 
+        index = c("Classificador", "Ente"), 
+        vSize = "Valor", 
+        type = "color",
+        vColor = "Cor",
+        fontfamily.title = "Source Sans Pro",
+        fontfamily.labels = "Source Sans Pro",
+        fontfamily.legend = "Source Sans Pro",
+        fontsize.title = 14,
+        fontsize.labels = c(11,8),
+        title = titulo)
+}
+
+mapaRec <- grafico_treemap(recTree, "Receitas Orçamentárias - 2017")
+mapaDesp <- grafico_treemap(despTree, "Despesas Orçamentárias - 2017")
+
+```
+É possível clicar nos retângulos para visualizar a distribuição de cada classificador por ente (União, Estados e Municípios). Para retornar à visualização geral, basta clicar no texto "Receitas Orçamentárias Consolidadas - 2017".
+
+```{r message=FALSE, warning=FALSE}
+d3tree3(mapaRec, rootname = "Receitas Orçamentárias Consolidadas - 2017")
+```
+
+De maneira semelhante, no próximo gráfico os valores são apresentados primeiramente divididos por cada classificador da **despesa**. É possível clicar nos retângulos para visualizar a distribuição de cada classificador por ente (União, Estados e Municípios). Para retornar à visualização geral, basta clicar no texto "Despesas Orçamentárias Consolidadas - 2017".
+
+```{r message=FALSE, warning=FALSE}
+d3tree3(mapaDesp, rootname = "Despesas Orçamentárias Consolidadas - 2017")
 ```
 
 
@@ -353,6 +436,11 @@ Nos termos do Manual Técnico de Orçamento de 2018, produzido pela Secretaria d
 que permite a consolidação nacional dos gastos do setor público.
 
 Assim, essa é uma classificação adotada em âmbito nacional, que indica as áreas da atuação governamental em que foram aplicadas as despesas públicas.
+
+A Nota 4, "Escopo", da íntegra do BSPN 2017 explica:
+
+> O Demonstrativo das Despesas por Função tem como propósito possibilitar o estudo da alocação dos recursos públicos, com base nas áreas de atuação presentes na classificação funcional e, assim, fornecer subsídios para a análise de sua adequação ou necessidade de revisão. Esse demonstrativo
+constitui, inclusive, uma fonte de informações para comparações internacionais que objetivam identificar as prioridades de gastos em diferentes países, bem como uma das importantes métricas a serem utilizadas para se determinar a eficiência, eficácia e efetividade da qualidade do gasto público, o que pode influenciar diretamente na determinação das políticas públicas futuras.
 
 O Quadro 11 do BSPN 2017 demonstra os valores executados pela União, Estados e Municípios, bem como os valores consolidados, por função de governo.
 
@@ -553,7 +641,11 @@ Diante de tudo isso, análises sobre o comportamento histórico das despesas por
 
 Comecemos por analisar o comportamento das despesas nacionais, segmentadas por esfera de governo, em quatro das principais áreas da atuação governamental: saúde, educação, assistência social e segurança pública. 
 
-```{r serie-historica-funcao, message=FALSE, warning=FALSE}
+```{r serie-historica-funcao, message=FALSE, warning=FALSE, results='hide', fig.keep='all'}
+
+# usei essas opções do chunk: results='hide',fig.keep='all'
+# pq quando uso o lapply ele acaba incluindo uns [[1]] junto com os plots.
+# além disso, o ipeaData tb faz um print lá.
 
 fun_mun <- read_excel("consol_serie.xls", sheet="Funcao Municipios",skip=11,trim_ws=FALSE)
 fun_est <- read_excel("consol_serie.xls", sheet="Funcao Estados",skip=11,trim_ws=FALSE)
@@ -660,7 +752,7 @@ plot_funcoes <- function(funcao){
     ) +
     scale_y_continuous(labels = scales::percent) +
     scale_fill_manual(values = tres_cores) +
-    geom_text(aes(label= scales::percent(Valor)),size = 3, position = position_stack(vjust = 0.5), hjust = 0.5, family = "Source Sans Pro", color = "white") +
+    geom_text(aes(label= scales::percent(Valor)),size = 2.5, position = position_stack(vjust = 0.5), hjust = 0.5, family = "Source Sans Pro", color = "white") +
     tema_BSPN()
 }
 
@@ -672,11 +764,6 @@ lapply(funcoes_de_interesse, plot_funcoes)
 # plot_funcoes("SAÚDE")
 # plot_funcoes("ASSISTÊNCIA SOCIAL")
 # plot_funcoes("SEGURANÇA PÚBLICA")
-
-#ggplot(serie_f %>% filter(Funcao=="EDUCAÇÃO"), aes(x = Ano, y = Valor)) +
-  #geom_point(aes(color=ente))+
-  #geom_line(aes(group=ente))
-  #geom_area(aes(fill = ente, group = ente), stat = "identity", position="stack")
 
 ```
 
