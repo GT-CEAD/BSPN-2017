@@ -37,6 +37,10 @@ blockquote {
   font-family: "Source Sans Pro";
 }
 
+.temporario {
+  background-color: #f9ec95;
+}
+
 ```
 
 
@@ -75,6 +79,7 @@ tema_BSPN <- function(){
       panel.grid.minor = element_blank(),
       legend.text = element_text(size = 8),
       legend.title = element_text(size = 8),
+      axis.ticks.x = element_line(),
       legend.position = 'bottom')
 }
 
@@ -381,6 +386,76 @@ ggplot(recDesp_filtrado, aes(fill = Classificador, y = Valor, x = Ente)) +
 
 ```
 
+Em termos de participação de cada tipo de receita e despesa nos entes,
+
+```{r message=FALSE, warning=FALSE}
+
+# vamos nos divertir com o dplyr e acrescentar uma coluna com os percentuais por Classe+Ente, para incluir os rótulos no gráfico 
+
+recDesp_filtrado_percent <- recDesp_filtrado %>%
+  group_by(Classe, Ente) %>%
+  summarise(Total = sum(Valor)) %>%
+  right_join(recDesp_filtrado) %>%
+  mutate(percentual = Valor/Total) %>%
+  select(-Total)
+
+plota_percent <- function(dados, titulo){
+  ggplot(dados, aes(fill = Classificador, y = Valor, x = Ente)) +
+    coord_flip() +
+    geom_bar(stat = "identity", position = "fill", width=0.6, color = "white", size = 1) + 
+    geom_text(aes(label = scales::percent(round(percentual,3))),
+                  position = position_fill(vjust = 0), 
+                  hjust = -0.1, 
+                  vjust = -2.4,
+                  size = 2.5, 
+                  family = "Source Sans Pro", 
+                  color = "grey20") +
+    scale_y_continuous(labels = scales::percent) +
+    scale_fill_manual(values = cores_legenda) +
+    # scale_color_manual(values = cores_legenda) + #se fosse colocar os rótulos com as mesmas cores
+    labs(
+      x = NULL,
+      y = NULL,
+      fill = "Despesas \n\nReceitas",
+      title = titulo,
+      subtitle = "Em percentuais do total para cada ente.",
+      caption = "Fonte: BSPN 2017, Quadros 9 e 10, \"DEMONSTRATIVO DA EXECUÇÃO ORÇAMENTÁRIA\"") +
+    facet_grid(Classe ~ .) + tema_BSPN() #+ guides(color = FALSE) 
+  }
+
+plota_percent(recDesp_filtrado_percent %>% filter(Ente != "Consolidado"),"Resumo das Receitas e Despesas do BSPN 2017")
+
+
+```
+
+Observe que as despesas com "Dívida" e as receitas com "Operações de Crédito" são bastante relevantes na União. Essas receitas e despesas orçamentárias correspondem ao reconhecimento, no orçamento, das operações relacionadas à gestão e refinanciamento da Dívida Pública Federal. Se desconsiderarmos essas operações, ficaríamos com o seguinte panorama:
+
+```{r message=FALSE, warning=FALSE}
+
+# recálculo dos percentuais, desconsiderando Dívida e Operações de Crédito
+
+recDesp_filtrado_percent_semDiv <- recDesp_filtrado %>%
+  filter(!Classificador %in% c("Operações de Crédito", "Dívida"))
+
+recDesp_filtrado_percent_semDiv <- recDesp_filtrado_percent_semDiv %>%
+  group_by(Classe, Ente) %>%
+  summarise(Total = sum(Valor)) %>%
+  right_join(recDesp_filtrado_percent_semDiv) %>%
+  mutate(percentual = Valor/Total) %>%
+  select(-Total)
+
+plota_percent(recDesp_filtrado_percent_semDiv %>% filter(Ente != "Consolidado"),"Resumo das Receitas e Despesas do BSPN 2017 &mdash exceto dívida")
+```
+
+<div class = "temporario">
+Alguns pontos de destaque
+
+(fazer um gif???)
+
+* receitas de transferências dos municípios
+* despesas com outras despesas correntes na união (recalcular percentuais sem RGPS e Transferências?)
+</div>
+
 Uma outra forma de visualizar essas informações é por meio do chamado "tree map". No gráfico das receitas abaixo, a área de cada retângulo é proporcional aos valores que eles representam. Os valores são apresentados primeiramente divididos por cada classificador da **receita**. Observe que as cores das receitas são as mesmas das cores utilizadas no gráfico anterior, para manter coerência.
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -413,6 +488,7 @@ mapaRec <- grafico_treemap(recTree, "Receitas Orçamentárias - 2017")
 mapaDesp <- grafico_treemap(despTree, "Despesas Orçamentárias - 2017")
 
 ```
+
 É possível clicar nos retângulos para visualizar a distribuição de cada classificador por ente (União, Estados e Municípios). Para retornar à visualização geral, basta clicar no texto "Receitas Orçamentárias Consolidadas - 2017".
 
 ```{r message=FALSE, warning=FALSE}
@@ -424,6 +500,48 @@ De maneira semelhante, no próximo gráfico os valores são apresentados primeir
 ```{r message=FALSE, warning=FALSE}
 d3tree3(mapaDesp, rootname = "Despesas Orçamentárias Consolidadas - 2017")
 ```
+
+Por fim, é interessante comparar a arrecadação, em 2017, dos diversos impostos atribuídos pela Constituição aos entes da Federação.
+
+```{r}
+
+impostos <- read.csv2("impostos.csv", dec = ",")
+
+impostos <- impostos %>%
+  mutate(Valor = as.numeric(Valor) / 1000000) %>%
+  arrange(desc(Valor)) %>%
+  mutate(Imposto = fct_reorder(Imposto, Valor, desc = TRUE))
+
+formata_BR <- scales::format_format(big.mark = ".", decimal.mark = ",", scientific = FALSE)
+
+ggplot(impostos, 
+      aes(
+        fill = Ente, 
+        y = Valor, 
+        x = Imposto)) +
+    coord_flip() +
+    geom_bar(stat="identity", width=0.6, color = "white", size = 1) +
+    labs(
+      x = NULL,
+      y = NULL,
+      fill = "Ente",
+      title = paste("Arrecadação bruta dos impostos brasileiros ","\u2013"," 2017"),
+      caption = "Declarações de Contas Anuais dos Entes da Federação (Siconfi)",
+      subtitle = "Em milhões de reais."
+    ) +
+    geom_text(aes(label = format(round(Valor,0), big.mark = ".", decimal.mark = ","), y = Valor + 4000, colour = Ente),
+              position = "identity",
+              hjust = 0,
+              size = 3,
+              family = "Source Sans Pro") +
+    scale_y_continuous(labels = formata_BR, limits = c(0,max(impostos$Valor)+30000)) + #uexpand = c(0,0) para zerar o padding entre o exito e o início do gráfico 
+    scale_fill_manual(values = tres_cores) +
+    scale_colour_manual(values = tres_cores) +
+    tema_BSPN() + guides(colour = FALSE)
+
+```
+
+
 
 
 ### Despesas por Função
@@ -571,8 +689,6 @@ plot_fun_abs <- ggplot(
     scale_fill_manual(values = tres_cores) +
     tema_BSPN()
 
-formata_BR <- scales::format_format(big.mark = ".", decimal.mark = ",", scientific = FALSE)
-
 plot_fun_abs_principais <- ggplot(
       d_fun_principais, 
       aes(
@@ -718,8 +834,8 @@ pibs <- ipeadata("BM12_PIBAC12")
 pibs <- pibs[MES=="12" & ANO %in% (2002:2017)]$VALVALOR
 
 ## incorpora na mão pib de 2017 que ainda não estava disponível no pacote ipeaData. Peguei do IBGE.
-
-pibs <- c(pibs, 6559940)
+## não precisa mais, já atualizaram
+# pibs <- c(pibs, 6559940)
 
 for (i in 1:length(pibs)){
   sh_fun[,i+4] <- round(sh_fun[,i+4] / pibs[i], 4)
@@ -753,7 +869,7 @@ plot_funcoes <- function(funcao){
     scale_y_continuous(labels = scales::percent) +
     scale_fill_manual(values = tres_cores) +
     geom_text(aes(label= scales::percent(Valor)),size = 2.5, position = position_stack(vjust = 0.5), hjust = 0.5, family = "Source Sans Pro", color = "white") +
-    tema_BSPN()
+    tema_BSPN() + theme(axis.ticks.x = element_blank(), axis.ticks.y = element_line())
 }
 
 funcoes_de_interesse <- c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL", "SEGURANÇA PÚBLICA")
@@ -917,7 +1033,3 @@ dotPlot_fun(sh_dotPlot %>% filter(!(Funcao %in% funcoes_top4)), "Exceto funçõe
 ```{r fig.height=2, fig.width=7, message=FALSE, warning=FALSE}
 dotPlot_fun(sh_dotPlot %>% filter(Funcao %in% funcoes_top4), "Apenas funções Previdência, Encargos Sociais, Saúde e Educação.")+expand_limits(x = 32)
 ```
-
-
-
-
