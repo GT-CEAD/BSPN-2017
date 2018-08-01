@@ -38,7 +38,17 @@ blockquote {
 }
 
 .temporario {
+  font-size: 12px;
   background-color: #f9ec95;
+  padding: 5px 10px;
+  border: 2px solid #F8AC08;
+}
+
+.destaque {
+  background-color: #f9172e;
+  color: white;
+  padding: 0 5px;
+  border-radius: 5px;
 }
 
 ```
@@ -380,13 +390,13 @@ ggplot(recDesp_filtrado, aes(fill = Classificador, y = Valor, x = Ente)) +
     y = NULL,
     fill = "Despesas \n\nReceitas",
     title = "Resumo das Receitas e Despesas do BSPN 2017",
-    subtitle = "Valores em R$ bilhões.",
+    subtitle = "Valores em R$ bilhões. Categorias com valores inferiores a R$ 20 bilhões não foram apresentados.",
     caption = "Fonte: BSPN 2017, Quadros 9 e 10, \"DEMONSTRATIVO DA EXECUÇÃO ORÇAMENTÁRIA\"") +
   facet_grid(Classe ~ .) + tema_BSPN() #+ guides(color = FALSE) # se fosse colocar rótulos c/ cores
 
 ```
 
-Em termos de participação de cada tipo de receita e despesa nos entes,
+O gráfico anterior permite fazer uma comparação entre os valores absolutos de cada conjunto de entes. No entanto, para melhor visualizar e participação de cada tipo de despesa e de receita nos totais, e comparar essas participações entre os entes, podemos apresentar o mesmo gráfico de uma forma diferente, em termos de percentuais dos totais:
 
 ```{r message=FALSE, warning=FALSE}
 
@@ -428,7 +438,7 @@ plota_percent(recDesp_filtrado_percent %>% filter(Ente != "Consolidado"),"Resumo
 
 ```
 
-Observe que as despesas com "Dívida" e as receitas com "Operações de Crédito" são bastante relevantes na União. Essas receitas e despesas orçamentárias correspondem ao reconhecimento, no orçamento, das operações relacionadas à gestão e refinanciamento da Dívida Pública Federal. Se desconsiderarmos essas operações, ficaríamos com o seguinte panorama:
+Observe que as despesas com "Dívida" e as receitas com "Operações de Crédito" são bastante relevantes na União. Essas receitas e despesas orçamentárias correspondem ao reconhecimento, no orçamento, das operações relacionadas à gestão e ao refinanciamento da Dívida Pública Federal. Se desconsiderarmos essas operações, ficaríamos com o seguinte panorama:
 
 ```{r message=FALSE, warning=FALSE}
 
@@ -444,17 +454,28 @@ recDesp_filtrado_percent_semDiv <- recDesp_filtrado_percent_semDiv %>%
   mutate(percentual = Valor/Total) %>%
   select(-Total)
 
-plota_percent(recDesp_filtrado_percent_semDiv %>% filter(Ente != "Consolidado"),"Resumo das Receitas e Despesas do BSPN 2017 &mdash exceto dívida")
+plota_percent(recDesp_filtrado_percent_semDiv %>% filter(Ente != "Consolidado"),"Resumo das Receitas e Despesas do BSPN 2017 \u2013 exceto dívida") + 
+  geom_label(aes(x = ifelse(Classe == "Despesas", "União", "Municípios"), 
+                 y = ifelse(Classe == "Despesas", 0.6, 0.7),
+                 label = ifelse(Classe == "Despesas", "1", "2")),
+             color = "white",
+             fill = "#f9172e",
+             fontface = "bold",
+             size = 2.5, 
+             family = "Source Sans Pro")
 ```
 
+Destacamos dois itens do gráfico. Vamos comentá-los no quadro abaixo. 
+
 <div class = "temporario">
-Alguns pontos de destaque
+O destaque <span class = "destaque">1</span> chama a atenção para a participação do grupo "Outras Despesas Correntes" na União, um percentual de 73,7% das despesas totais, excetuando-se as despesas com a dívida pública federal. Esse percentual é bastante superior ao verificado nos Estados e nos Municípios, que se encontram em torno de 40%.
 
-(fazer um gif???)
+O que torna esse grupo tão superior na União é o fato de nele se classificarem as despesas com os **benefícios previdenciários do RGPS**, que em 2017 alcançaram o montante de R$ 561,4 bilhões (fonte: Siafi). Com a exclusão dessas despesas, o grupo de Outras Despesas Correntes na União representaria 38,5% das despesas sem dívida, um percentual mais próximo dos demais entes.
 
-* receitas de transferências dos municípios
-* despesas com outras despesas correntes na união (recalcular percentuais sem RGPS e Transferências?)
-</div>
+Cabe ainda ressaltar que esse grupo na União inclui R$ 320 bilhões (fonte: Siafi) referentes a transferências a Estados e Municípios, incluindo transferências obrigatórias.
+
+O destaque <span class = "destaque">2</span>, por sua vez, ressalta a importância das **transferências** (oriundas de Estados e da União) no total das receitas dos municípios.</div>
+
 
 Uma outra forma de visualizar essas informações é por meio do chamado "tree map". No gráfico das receitas abaixo, a área de cada retângulo é proporcional aos valores que eles representam. Os valores são apresentados primeiramente divididos por cada classificador da **receita**. Observe que as cores das receitas são as mesmas das cores utilizadas no gráfico anterior, para manter coerência.
 
@@ -501,9 +522,51 @@ De maneira semelhante, no próximo gráfico os valores são apresentados primeir
 d3tree3(mapaDesp, rootname = "Despesas Orçamentárias Consolidadas - 2017")
 ```
 
-Por fim, é interessante comparar a arrecadação, em 2017, dos diversos impostos atribuídos pela Constituição aos entes da Federação.
+Por fim, é interessante comparar a arrecadação, em 2017, dos diversos impostos atribuídos pela Constituição aos entes da Federação. Cabe lembrar que a Constituição Federal de 1988 distribuiu a competência de instituição dos diversos impostos entre as três esferas de governo:
 
-```{r}
+<blockquote>
+
+Art. 153. Compete à União instituir impostos sobre:
+
+I - **importação** de produtos estrangeiros;
+
+II - **exportação**, para o exterior, de produtos nacionais ou nacionalizados;
+
+III - **renda e proventos** de qualquer natureza;
+
+IV - **produtos industrializados**;
+
+V - **operações de crédito, câmbio e seguro, ou relativas a títulos ou valores mobiliários**;
+
+VI - **propriedade territorial rural**;
+
+[...]
+
+Art. 155. Compete aos Estados e ao Distrito Federal instituir impostos sobre:
+
+I - **transmissão causa mortis e doação**, de quaisquer bens ou direitos;
+
+II - **operações relativas à circulação de mercadorias e sobre prestações de serviços** de transporte interestadual e intermunicipal e de comunicação, ainda que as operações e as prestações se iniciem no exterior;
+
+III - **propriedade de veículos automotores**.
+
+[...]
+
+Art. 156. Compete aos Municípios instituir impostos sobre:
+
+I - **propriedade predial e territorial urbana**;
+
+II - **transmissão "inter vivos"**, a qualquer título, por ato oneroso, de bens imóveis, por natureza ou acessão física, e de direitos reais sobre imóveis, exceto os de garantia, bem como cessão de direitos a sua aquisição;
+
+III - **serviços de qualquer natureza**, não compreendidos no art. 155, II, definidos em lei complementar.
+</blockquote>
+
+
+O gráfico a seguir compara a arrecadação bruta desses diversos impostos em ordem decrescente de valor, destacando o ente responsável por sua instituição:
+
+```{r message=FALSE, warning=FALSE}
+
+# fazer uma rotininha decente para pegar os dados direto do Siconfi, ou pelo menos das planilhas da DCA
 
 impostos <- read.csv2("impostos.csv", dec = ",")
 
@@ -540,9 +603,6 @@ ggplot(impostos,
     tema_BSPN() + guides(colour = FALSE)
 
 ```
-
-
-
 
 ### Despesas por Função
 
@@ -883,7 +943,9 @@ lapply(funcoes_de_interesse, plot_funcoes)
 
 ```
 
-O gráfico a seguir mostra uma série histórica das despesas totais (consolidadas) de todos os entes da federação por função (com a exceção das funções "Previdência" e "Encargos Sociais") em percentuais do PIB, para o período de 2002 a 2017. Passando-se o mouse sobre as linhas é possível destacar cada uma das funções, além de evidenciar o valor da despesa em cada ano.
+Os gráficos a seguir mostram as séries históricas das despesas totais (consolidadas) de todos os entes da federação por função (com a exceção da função "Encargos Sociais") **em percentuais do PIB**, para o período de 2002 a 2017. Passando-se o mouse sobre as linhas é possível destacar cada uma das funções, além de evidenciar o valor da despesa em cada ano.
+
+Primeiramente, são evidenciadas apenas as funções "Previdência", "Saúde" e "Educação", por representarem valores bastante superiores às demais.
 
 ```{r message=FALSE, warning=FALSE}
 tabela_sh <- sh_fun %>% 
@@ -893,9 +955,17 @@ tabela_sh <- sh_fun %>%
 
 # write.csv2(tabela_sh, file="tabela_sh.csv")
 
-sh_linhas <- sh_fun %>% 
-  filter(ente == "Consolidado" & !(Funcao %in% c("28 - Encargos Especiais", "09 - Previdência Social"))) %>%
+funcoes_1 <- c("09 - Previdência Social", "10 - Saúde", "12 - Educação")
+
+sh_linhas1 <- sh_fun %>% 
+  filter(ente == "Consolidado" & Funcao %in% funcoes_1) %>%
   mutate(Valor = Valor*100)
+
+sh_linhas2 <- sh_fun %>% 
+  filter(ente == "Consolidado" & !(Funcao %in% funcoes_1) & Funcao != "28 - Encargos Especiais") %>%
+  mutate(Valor = Valor*100)
+
+sh_linhas <- list(sh_linhas1, sh_linhas2)
 
 ### opção com highcharter. bem legal, mas é pago.
 
@@ -919,14 +989,21 @@ sh_linhas <- sh_fun %>%
 library(xts)
 library(dygraphs)
 
-sh_xts <- sh_linhas
-sh_xts$Ano <- as.Date(paste(sh_xts$Ano, 01, 01, sep = "-"))
+series_xts <- vector("list", 2)
 
-sh_xts[2:4] <- NULL 
-sh_xts$Funcao <- as.factor(sh_xts$Funcao)
-sh_xts <- sh_xts %>%
-  spread(key = "Funcao", value = "Valor")
-sh_xts <- xts(sh_xts[,-1], order.by = sh_xts$Ano)
+for (i in 1:2){
+  
+  sh_xts <- sh_linhas[[i]]
+  sh_xts$Ano <- as.Date(paste(sh_xts$Ano, 01, 01, sep = "-"))
+  
+  sh_xts[2:4] <- NULL 
+  sh_xts$Funcao <- as.factor(sh_xts$Funcao)
+  sh_xts <- sh_xts %>%
+    spread(key = "Funcao", value = "Valor")
+  sh_xts <- xts(sh_xts[,-1], order.by = sh_xts$Ano)
+  
+  series_xts[[i]] <- sh_xts
+}
 
 # # com div para mostrar legenda separada
 # dygraph(sh_xts) %>%
@@ -938,47 +1015,57 @@ sh_xts <- xts(sh_xts[,-1], order.by = sh_xts$Ano)
 
 # tentando mostrar só uma legenda por vez
 
-dygraph(sh_xts) %>%
-  dyHighlight(highlightCircleSize = 5, 
-              highlightSeriesBackgroundAlpha = 0.2,
-              highlightSeriesOpts = list(strokeWidth = 3),
-              hideOnMouseOut = FALSE) %>%
-  dyAxis("y",
-         pixelsPerLabel = 40, 
-         gridLineColor = "rgb(222,222,222)", 
-         valueFormatter = ('function(d) {return d+" %"}'),
-         axisLabelFormatter = ('function(d) {return d+" %"}'),
-         axisLineColor = "white") %>% 
-  dyAxis("x", 
-         pixelsPerLabel = 40, 
-         gridLineColor = "rgb(222,222,222)", 
-         axisLabelFormatter = ('function(d) {return d.getFullYear()}'), #1
-         rangePad = 5,
-         axisLineColor = "white") %>% 
-  dyLegend(show = "always") %>%
-  dyCSS(textConnection(" 
-     .dygraph-legend > span { display: none; }
-     .dygraph-legend > span.highlight { display: inline; }
-     .dygraph-legend { font-family: Source Sans Pro; }
-     .dygraph-label { font-family: Source Sans Pro; }
-     .dygraph-axis-label { font-family: Source Sans Pro; }
-  ")) #2
+graph_int_linhas <- function(df) {
+  dygraph(df) %>%
+    dyHighlight(highlightCircleSize = 5, 
+                highlightSeriesBackgroundAlpha = 0.2,
+                highlightSeriesOpts = list(strokeWidth = 3),
+                hideOnMouseOut = FALSE) %>%
+    dyAxis("y",
+           pixelsPerLabel = 40, 
+           gridLineColor = "rgb(222,222,222)", 
+           valueFormatter = ('function(d) {return d+" %"}'),
+           axisLabelFormatter = ('function(d) {return d+" %"}'),
+           axisLineColor = "white") %>% 
+    dyAxis("x", 
+           pixelsPerLabel = 40, 
+           gridLineColor = "rgb(222,222,222)", 
+           axisLabelFormatter = ('function(d) {return d.getFullYear()}'), #1
+           rangePad = 5,
+           axisLineColor = "white") %>% 
+    dyLegend(show = "always") %>%
+    dyCSS(textConnection(" 
+       .dygraph-legend > span { display: none; }
+       .dygraph-legend > span.highlight { display: inline; }
+       .dygraph-legend { font-family: Source Sans Pro; }
+       .dygraph-label { font-family: Source Sans Pro; }
+       .dygraph-axis-label { font-family: Source Sans Pro; }
+    ")) #2
+  
+  # 1: tem que passar uma função em JavaScript (por isso o JS(...)). Por algum motivo, ele estava posicionando no ano posterior, então incluí um -1 na expressão. Aí resolvi mudar a data para 01-01 de cada ano, em vez de 31-12.
+  # o que ajudou aqui: https://stackoverflow.com/questions/28915328/how-to-set-x-axis-in-dygraphs-for-r-to-show-just-month/28918684
+  
+  # 2: as duas primeiras linhas foi o que fizeram o tooltip mostrar apenas o valor da série "hoverada", e não as demais.
+  # o que ajudou aqui: https://stackoverflow.com/questions/35943583/plain-dygraphs-javascript-options-in-r-shiny
+}
 
-# 1: tem que passar uma função em JavaScript (por isso o JS(...)). Por algum motivo, ele estava posicionando no ano posterior, então incluí um -1 na expressão. Aí resolvi mudar a data para 01-01 de cada ano, em vez de 31-12.
-# o que ajudou aqui: https://stackoverflow.com/questions/28915328/how-to-set-x-axis-in-dygraphs-for-r-to-show-just-month/28918684
-
-# 2: as duas primeiras linhas foi o que fizeram o tooltip mostrar apenas o valor da série "hoverada", e não as demais.
-# o que ajudou aqui: https://stackoverflow.com/questions/35943583/plain-dygraphs-javascript-options-in-r-shiny
-
-
+graph_int_linhas(series_xts[[1]])
 
 ```
 <!--<div id="labels">-->
 <!--</div>-->
 
-Por fim, os gráficos seguintes demonstram os valores dessas despesas, ainda em percentuais do PIB, para os exercícios de 2002 e 2017. Linhas <span style="color: #004a93;">azuis</span> representam valores que aumentaram de 2002 para 2017, as linhas <span style="color: #dd3127;">vermelhas</span>, valores que diminuiram nesse período. As funções são apresentadas em ordem decrescente do valor de 2017 (que está destacado em *negrito* e nas cores azul ou vermelha, conforme as despesas tenham aumentado ou diminuído no período considerado).
+A seguir, as demais funções.
 
-A ideia é evidenciar as principais variações de 2002 para 2017.
+```{r message=FALSE, warning=FALSE}
+
+graph_int_linhas(series_xts[[2]])
+
+```
+
+Por fim, os gráficos seguintes destacam as variações nessas despesas, ainda em percentuais do PIB, do exercício de 2002 para o de 2017. 
+
+Linhas <span style="color: #004a93;">azuis</span> representam valores que aumentaram de 2002 para 2017, as linhas <span style="color: #dd3127;">vermelhas</span>, valores que diminuiram nesse período. As funções são apresentadas em ordem decrescente do valor de 2017 (que está destacado em *negrito* e nas cores azul ou vermelha, conforme as despesas tenham aumentado ou diminuído no período considerado).
 
 ```{r dot-plot-prep, message=FALSE, warning=FALSE}
 
@@ -1002,6 +1089,7 @@ dotPlot_fun <- function(dados, legenda){
   ggplot(dados) +
     geom_path(aes(x = Valor, y = Funcao, color = Aumentou), size = 0.5,
               arrow = arrow(angle = 30, length = unit(0.05, "inches"), ends = "last", type = "open"))+
+    geom_point(data = subset(dados, Ano == "2002"), aes(x = Valor, color = Aumentou, y = Funcao), size = 1) +
     # geom_point(aes(x = Valor, y= Funcao))+
      geom_text(
        aes(x = Valor,
@@ -1026,10 +1114,12 @@ dotPlot_fun <- function(dados, legenda){
     tema_BSPN()
 }
 
-dotPlot_fun(sh_dotPlot %>% filter(!(Funcao %in% funcoes_top4)), "Exceto funções Previdência, Encargos Sociais, Saúde e Educação.")
+dotPlot_fun(sh_dotPlot %>% filter(!(Funcao %in% funcoes_top4)), "Exceto funções Previdência, Encargos Sociais, Saúde e Educação.")+expand_limits(x = c(0, 2))
 
 ```
 
 ```{r fig.height=2, fig.width=7, message=FALSE, warning=FALSE}
-dotPlot_fun(sh_dotPlot %>% filter(Funcao %in% funcoes_top4), "Apenas funções Previdência, Encargos Sociais, Saúde e Educação.")+expand_limits(x = 32)
+dotPlot_fun(sh_dotPlot %>% filter(Funcao %in% funcoes_top4), "Apenas funções Previdência, Encargos Sociais, Saúde e Educação.")+expand_limits(x = 33)
 ```
+
+<span style="font-size: 8px"> Secretaria do Tesouro Nacional </span>
