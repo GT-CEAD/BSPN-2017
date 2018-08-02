@@ -934,7 +934,7 @@ plot_funcoes <- function(funcao){
 
 funcoes_de_interesse <- c("EDUCAÇÃO", "SAÚDE", "ASSISTÊNCIA SOCIAL", "SEGURANÇA PÚBLICA")
 
-lapply(funcoes_de_interesse, plot_funcoes)
+a <- lapply(funcoes_de_interesse, plot_funcoes)
 
 # plot_funcoes("EDUCAÇÃO")
 # plot_funcoes("SAÚDE")
@@ -942,6 +942,49 @@ lapply(funcoes_de_interesse, plot_funcoes)
 # plot_funcoes("SEGURANÇA PÚBLICA")
 
 ```
+
+```{r message=FALSE, warning=FALSE}
+
+# os graficos de linhas
+
+sh_fun_spread <- sh_fun %>%
+  filter(ente != "Consolidado") %>%
+  spread(key = Ano, value = Valor) %>%
+  mutate(referencia = `2002`) %>%
+  mutate_at(vars(`2002`:`2017`), funs(./referencia)) %>%
+  select(-referencia) %>%
+  gather(key = "Ano", value = "Valor", `2002`:`2017`)
+
+
+### transformar em função, generalizar.
+
+ggplot(sh_fun_spread %>% filter(Funcao_Maius == "EDUCAÇÃO"),
+       aes(y = Valor, x = Ano, group = ente, color = ente)) +
+  geom_line(size = 1) +
+  geom_text(aes(x = "2017", 
+                label = ifelse(Ano == "2017", 
+                               paste(ifelse(Valor > 1, " +", " "), scales::percent(Valor-1), ente), 
+                               "")),
+            hjust = -0,
+            family = "Source Sans Pro",
+            size = 3)+
+    labs(
+      x = NULL,
+      y = NULL,
+      title = paste("Variação das despesas com ", tolower(funcao)," por ente da Federação", sep=""),
+      subtitle = "Variação das despesas em percentuais do PIB de 2002 a 2017 em relação aos valores de 2002"
+    ) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_color_manual(values = tres_cores) +
+  guides(color = FALSE) +
+  tema_BSPN() + 
+  expand_limits(x = 2017 - 2002 + 4)
+
+
+write.csv2(sh_fun_spread, file = "sh_fun.csv")
+```
+
+
 
 Os gráficos a seguir mostram as séries históricas das despesas totais (consolidadas) de todos os entes da federação por função (com a exceção da função "Encargos Sociais") **em percentuais do PIB**, para o período de 2002 a 2017. Passando-se o mouse sobre as linhas é possível destacar cada uma das funções, além de evidenciar o valor da despesa em cada ano.
 
