@@ -7,7 +7,7 @@ output:
     highlight: zenburn
     theme: cosmo
     toc: yes
-    toc_depth: 3
+    toc_depth: 4
     toc_float: yes
 ---
 
@@ -1005,6 +1005,46 @@ lista_grafLinhas[[i]]
 ```
 </div>
 
+##### Saúde
+
+<div class="wrapperFig">
+```{r message=FALSE, warning=FALSE}
+i <- 2
+
+lista_grafBarras[[i]]
+lista_grafLinhas[[i]]
+
+
+```
+</div>
+
+##### Assistência Social
+
+<div class="wrapperFig">
+```{r message=FALSE, warning=FALSE}
+i <- 3
+
+lista_grafBarras[[i]]
+lista_grafLinhas[[i]]
+
+
+```
+</div>
+
+##### Segurança Pública
+
+<div class="wrapperFig">
+```{r message=FALSE, warning=FALSE}
+i <- 4
+
+lista_grafBarras[[i]]
+lista_grafLinhas[[i]]
+
+
+```
+</div>
+
+##### Despesas consolidadas
 
 Os gráficos a seguir mostram as séries históricas das despesas totais (consolidadas) de todos os entes da federação por função (com a exceção da função "Encargos Sociais") **em percentuais do PIB**, para o período de 2002 a 2017. Passando-se o mouse sobre as linhas é possível destacar cada uma das funções, além de evidenciar o valor da despesa em cada ano.
 
