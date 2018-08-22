@@ -480,6 +480,9 @@ Cabe ainda ressaltar que esse grupo na União inclui R$ 320 bilhões (fonte: Sia
 
 O destaque <span class = "destaque">2</span>, por sua vez, ressalta a importância das **transferências** (oriundas de Estados e da União) no total das receitas dos municípios.</div>
 
+Na figura abaixo podemos visualizar os efeitos de "Transferências a Estados e Municípios" e "Benefícios Previdenciários do RGPS" no total das despesas da União.
+
+![](grafico.PNG)
 
 Uma outra forma de visualizar essas informações é por meio do chamado "tree map". No gráfico das receitas abaixo, a área de cada retângulo é proporcional aos valores que eles representam. Os valores são apresentados primeiramente divididos por cada classificador da **receita**. Observe que as cores das receitas são as mesmas das cores utilizadas no gráfico anterior, para manter coerência.
 
