@@ -79,10 +79,10 @@ cor_passivo <- "#CA4017"
 tema_BSPN <- function(){
     theme_minimal() +
     theme(
-      text = element_text(family = "Open Sans", colour = "grey20"),
-      axis.text = element_text(family = "Open Sans", colour = "grey20"),
+      text = element_text(family = "Calibri", colour = "grey20"),
+      axis.text = element_text(family = "Calibri", colour = "grey20"),
       title = element_text(face = "bold", size = 10),
-      plot.subtitle = element_text(face = "plain", family = "Open Sans Condensed", size = 10),
+      plot.subtitle = element_text(face = "plain", family = "Calibri Light", size = 10),
       plot.caption = element_text(face = "italic"),
       panel.grid.major = element_blank(), 
       panel.grid.minor = element_blank(),
@@ -627,7 +627,7 @@ O Quadro 11 do BSPN 2017 demonstra os valores executados pela União, Estados e 
 O gráfico a seguir busca demonstrar a participação de cada ente da federação no total da despesa consolidada em que cada função.
 
 ```{r funcao, message=FALSE, warning=FALSE}
-desp_fun <- read_excel("funcao_2017.xlsx")
+desp_fun <- read_excel("dados/funcao_2017.xlsx")
 
 tabela_nomes_funcoes <- desp_fun[1:28,1:2]
 
@@ -825,15 +825,15 @@ Comecemos por analisar o comportamento das despesas nacionais, segmentadas por e
 # pq quando uso o lapply ele acaba incluindo uns [[1]] junto com os plots.
 # além disso, o ipeaData tb faz um print lá.
 
-fun_mun <- read_excel("consol_serie.xls", sheet="Funcao Municipios",skip=11,trim_ws=FALSE)
-fun_est <- read_excel("consol_serie.xls", sheet="Funcao Estados",skip=11,trim_ws=FALSE)
-fun_uni <- read_excel("consol_serie.xls", sheet="Funcao Uniao",skip=11,trim_ws=FALSE)
-fun_con <- read_excel("consol_serie.xls", sheet="Funcao Consolidado",skip=11,trim_ws=FALSE)
+fun_mun <- read_excel("dados/consol_serie.xls", sheet="Funcao Municipios",skip=11,trim_ws=FALSE)
+fun_est <- read_excel("dados/consol_serie.xls", sheet="Funcao Estados",skip=11,trim_ws=FALSE)
+fun_uni <- read_excel("dados/consol_serie.xls", sheet="Funcao Uniao",skip=11,trim_ws=FALSE)
+fun_con <- read_excel("dados/consol_serie.xls", sheet="Funcao Consolidado",skip=11,trim_ws=FALSE)
 
-fun_mun2 <- read_excel("complemento_serie_funcoes_2013_2017.xlsx", sheet="Função Municípios", trim_ws=FALSE)
-fun_est2 <- read_excel("complemento_serie_funcoes_2013_2017.xlsx", sheet="Função Estados", trim_ws=FALSE)
-fun_uni2 <- read_excel("complemento_serie_funcoes_2013_2017.xlsx", sheet="Função União", trim_ws=FALSE)
-fun_con2 <- read_excel("complemento_serie_funcoes_2013_2017.xlsx", sheet="Função Consolidado", trim_ws=FALSE)
+fun_mun2 <- read_excel("dados/complemento_serie_funcoes_2013_2017.xlsx", sheet="Função Municípios", trim_ws=FALSE)
+fun_est2 <- read_excel("dados/complemento_serie_funcoes_2013_2017.xlsx", sheet="Função Estados", trim_ws=FALSE)
+fun_uni2 <- read_excel("dados/complemento_serie_funcoes_2013_2017.xlsx", sheet="Função União", trim_ws=FALSE)
+fun_con2 <- read_excel("dados/complemento_serie_funcoes_2013_2017.xlsx", sheet="Função Consolidado", trim_ws=FALSE)
 
 tabela_nomes_funcoes$Funcao_Maius <- toupper(tabela_nomes_funcoes$Nome_funcao)
 
@@ -849,12 +849,16 @@ tabela_nomes_funcoes$Funcao_Maius <- toupper(tabela_nomes_funcoes$Nome_funcao)
 # uma função para processar esses arquivos e juntá-los. olha que coisa linda.
 
 gera_sh <- function(sh1, sh2){
+  sh2 <- sh2 %>% 
+    rename("Funcao" = 1) %>%
+    mutate(`2019` = as.numeric(`2019`))
+  
   sh1 %>%
     inner_join(tabela_nomes_funcoes, by = c("FUNÇÃO/SUBFUNÇÃO" = "Funcao_Maius")) %>%
     rename(Funcao_Maius = `FUNÇÃO/SUBFUNÇÃO`) %>%
     mutate_at(2:14, funs(./1000000)) %>% #wow! pq as primeiras tabelas estão em R$, as segundas em milhões
     select(15,16,1,4:14) %>% # desprezando os anos de 2000 e 2001 (colunas 2 e 3), por estarem incompletos.
-    left_join(sh2, by = c("Funcao" = "X__1"))    
+    left_join(sh2, by = c("Funcao"))    
 }
 
 sh_fun_con <- gera_sh(fun_con, fun_con2)
@@ -864,15 +868,17 @@ sh_fun_uni <- gera_sh(fun_uni, fun_uni2)
 
 # acrescentar o "ente" em cada tabela e juntar tudo
 
-lista_dfs <- list(sh_fun_con, sh_fun_mun, sh_fun_est, sh_fun_uni)
-entes <- c("Consolidado", "Municípios", "Estados", "União")
+lista_dfs <- list(#sh_fun_con, 
+  sh_fun_mun, sh_fun_est, sh_fun_uni)
+entes <- c(#"Consolidado", 
+  "Municípios", "Estados", "União")
 
-for (i in 1:4){
+for (i in 1:3){ #4
   lista_dfs[[i]]$ente <- entes[i]
 }
 
-sh_fun <- bind_rows(lista_dfs)
-sh_fun <- sh_fun[,c(1:3,20,4:19)]
+sh_fun_ini <- bind_rows(lista_dfs)
+sh_fun_ini2 <- sh_fun_ini[,c(1:3,22,4:21)]
 
 # código antigo
 #
@@ -891,25 +897,36 @@ sh_fun <- sh_fun[,c(1:3,20,4:19)]
 
 ## importa pib do IpeaData
 
-library(ipeaData)
-pibs <- ipeadata("BM12_PIBAC12")
-pibs <- pibs[MES=="12" & ANO %in% (2002:2017)]$VALVALOR
+# library(ipeaData)
+# pibs <- ipeadata("BM12_PIBAC12")
+# pibs <- pibs[MES=="12" & ANO %in% (2002:2017)]$VALVALOR
+
+pibs_bruto <- read_excel("dados/BM12_PIBAC12.xlsx")
+pibs <- pibs_bruto %>%
+  filter(MES=="12" & ANO %in% (2002:2019)) %>%
+  select(ANO, VALVALOR)
+
 
 ## incorpora na mão pib de 2017 que ainda não estava disponível no pacote ipeaData. Peguei do IBGE.
 ## não precisa mais, já atualizaram
 # pibs <- c(pibs, 6559940)
 
-for (i in 1:length(pibs)){
-  sh_fun[,i+4] <- round(sh_fun[,i+4] / pibs[i], 4)
+sh_fun_ini3 <- sh_fun_ini2
+
+for (i in 1:length(pibs$VALVALOR)){
+  sh_fun_ini3[,i+4] <- round(sh_fun_ini3[,i+4] / pibs$VALVALOR[i], 4)
 }
 
 # passando para um formato tidy
 
-sh_fun <- sh_fun %>%
-  gather(5:20, key="Ano", value="Valor")
+sh_fun_tidy <- sh_fun_ini3 %>%
+  gather(5:22, key="Ano", value="Valor")
 
+ggplot(sh_fun_tidy %>% filter(Funcao_Maius == "SAÚDE"), aes(x = Ano, y = Valor, color = ente, group = ente)) + geom_line() + scale_y_continuous(labels = scales::percent)
 
 # funcoes para plotar os gráficos de barra
+
+sh_fun <- sh_fun_tidy
 
 plot_funcoes <- function(funcao){
   ggplot(
@@ -925,7 +942,7 @@ plot_funcoes <- function(funcao){
       x = NULL,
       y = NULL,
       fill = "Ente",
-      title = paste("Despesas com ", tolower(funcao), " por ente da Federação ","2002\u2013","2017", sep=""),
+      title = paste("Despesas com ", tolower(funcao), " por ente da Federação ","2002\u2013","2019", sep=""),
       subtitle = "Em percentuais do PIB."
     ) +
     scale_y_continuous(labels = scales::percent) +
@@ -953,9 +970,9 @@ sh_fun_spread <- sh_fun %>%
   filter(ente != "Consolidado") %>%
   spread(key = Ano, value = Valor) %>%
   mutate(referencia = `2002`) %>%
-  mutate_at(vars(`2002`:`2017`), funs(./referencia)) %>%
+  mutate_at(vars(`2002`:`2019`), funs(./referencia)) %>%
   select(-referencia) %>%
-  gather(key = "Ano", value = "Valor", `2002`:`2017`)
+  gather(key = "Ano", value = "Valor", `2002`:`2019`)
 
 
 ### transformar em função, generalizar.
@@ -964,24 +981,24 @@ plot_funcoes_linhas <- function(funcao) {
   ggplot(sh_fun_spread %>% filter(Funcao_Maius == funcao),
        aes(y = Valor, x = Ano, group = ente, color = ente)) +
   geom_line(size = 1) +
-  geom_text(aes(x = "2017", 
-                label = ifelse(Ano == "2017", 
+  geom_text(aes(x = "2019", 
+                label = ifelse(Ano == "2019", 
                                paste(ifelse(Valor > 1, " +", " "), scales::percent(Valor-1), ente), 
                                "")),
             hjust = -0,
-            family = "Open Sans",
+            family = "Calibri",
             size = 2.8)+
     labs(
       x = NULL,
       y = NULL,
       title = paste("Variação das despesas com ", tolower(funcao)," por ente da Federação", sep=""),
-      subtitle = "Variação das despesas em percentuais do PIB de 2002 a 2017 em relação aos valores de 2002"
+      subtitle = "Variação das despesas em percentuais do PIB de 2002 a 2019 em relação aos valores de 2002"
     ) +
   scale_y_continuous(labels = scales::percent) +
   scale_color_manual(values = tres_cores) +
   guides(color = FALSE) +
   tema_BSPN() + 
-  expand_limits(x = 2017 - 2002 + 4)
+  expand_limits(x = 2019 - 2002 + 4)
 }
 
 lista_grafLinhas <- lapply(funcoes_de_interesse, plot_funcoes_linhas)
@@ -1012,6 +1029,7 @@ i <- 2
 lista_grafBarras[[i]]
 lista_grafLinhas[[i]]
 
+ggsave("saude.png", lista_grafLinhas[[2]], dpi = 400, type = "cairo-png", width = 8, height = 4)
 
 ```
 </div>
