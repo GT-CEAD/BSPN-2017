@@ -947,7 +947,7 @@ plot_funcoes <- function(funcao){
     ) +
     scale_y_continuous(labels = scales::percent) +
     scale_fill_manual(values = tres_cores) +
-    geom_text(aes(label= scales::percent(Valor)),size = 2.2, position = position_stack(vjust = 0.5), hjust = 0.5, family = "Open Sans", color = "white") +
+    geom_text(aes(label= scales::percent(Valor, 0.1)),size = 2.2, position = position_stack(vjust = 0.5), hjust = 0.5, family = "Calibri", color = "white") +
     tema_BSPN() + theme(axis.ticks.x = element_blank(), axis.ticks.y = element_line())
 }
 
@@ -1029,7 +1029,8 @@ i <- 2
 lista_grafBarras[[i]]
 lista_grafLinhas[[i]]
 
-ggsave("saude.png", lista_grafLinhas[[2]], dpi = 400, type = "cairo-png", width = 8, height = 4)
+ggsave("saude_barra.png", lista_grafBarras[[2]], dpi = 400, type = "cairo-png", width = 8, height = 5)
+ggsave("saude_linha.png", lista_grafLinhas[[2]], dpi = 400, type = "cairo-png", width = 8, height = 5)
 
 ```
 </div>
